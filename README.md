@@ -2,13 +2,22 @@
 
 Публичный статический сайт MediaPlatforma.
 
-## Публикация
+## Публикация через GitHub Pages
 
 - Исходники сайта находятся в каталоге `site/`.
 - Основная ветка: `main`.
-- GitHub Actions автоматически проверяет и публикует сайт в GitHub Pages после изменений в `site/**` или в workflow.
-- Публикация выполняется через GitHub Pages Actions: `actions/upload-pages-artifact` и `actions/deploy-pages`.
+- GitHub Actions проверяет сайт и публикует его в GitHub Pages после изменений в `site/**` или в workflow.
 - Cloudflare Pages не используется.
+
+### Однократная настройка репозитория
+
+До первого deployment необходимо включить GitHub Pages:
+
+1. Открыть **Settings → Pages** в репозитории.
+2. В разделе **Build and deployment** выбрать **Source: GitHub Actions**.
+3. После сохранения повторно запустить workflow **Deploy MediaPlatforma to GitHub Pages** в разделе Actions.
+
+Это действие требуется один раз. `GITHUB_TOKEN` имеет право публиковать Pages, но не может самостоятельно создать/включить Pages site через административный API. Поэтому workflow не пытается включать Pages автоматически.
 
 ## Структура
 
@@ -22,7 +31,7 @@
 
 ## Адрес сайта
 
-После успешного включения GitHub Pages и выполнения workflow:
+После включения GitHub Pages и успешного выполнения workflow:
 https://rytikov0285.github.io/Media-Public/
 
 ## Как опубликовать изменение
