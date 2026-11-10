@@ -1,0 +1,16 @@
+(()=>{'use strict';
+const articles=[
+{title:'Как проверить информацию в интернете: спокойный алгоритм вместо поспешных выводов',description:'Проверяем источник, дату, первоисточник и контекст. Последовательность для оценки публикаций и сообщений.',category:'Цифровая грамотность',url:'./articles/verify-information.html',keywords:'факты проверка источника фейк новости интернет достоверность'},
+{title:'Цифровая гигиена: семь шагов для защиты личных аккаунтов',description:'Пароли, двухфакторная аутентификация, резервные коды и осторожность с неожиданными ссылками.',category:'Технологии',url:'./articles/protect-accounts.html',keywords:'кибербезопасность пароль аккаунт защита фишинг'},
+{title:'Личный бюджет без сложных таблиц: с чего начать учёт расходов',description:'Как увидеть структуру расходов, выделить обязательные платежи и планировать деньги.',category:'Повседневная жизнь',url:'./articles/household-budget.html',keywords:'личные финансы бюджет расходы доходы планирование'},
+{title:'Подготовка к поездке: список вещей и документов, который экономит время',description:'Что проверить заранее, как хранить документы и почему полезно иметь резервный план.',category:'Путешествия',url:'./articles/travel-checklist.html',keywords:'поездка путешествие документы багаж чек лист'}
+];
+const panel=document.getElementById('searchPanel'),input=document.getElementById('siteSearch'),results=document.getElementById('searchResults');
+function openSearch(){if(!panel)return;panel.classList.add('open');panel.setAttribute('aria-hidden','false');document.body.style.overflow='hidden';setTimeout(()=>input.focus(),50)}
+function closeSearch(){if(!panel)return;panel.classList.remove('open');panel.setAttribute('aria-hidden','true');document.body.style.overflow='';document.getElementById('searchOpen')?.focus()}
+document.getElementById('searchOpen')?.addEventListener('click',openSearch);document.getElementById('searchClose')?.addEventListener('click',closeSearch);
+panel?.addEventListener('click',e=>{if(e.target===panel)closeSearch()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSearch()});
+input?.addEventListener('input',()=>{const q=input.value.trim().toLocaleLowerCase('ru');if(!q){results.innerHTML='<p class="search-hint">Введите тему, ключевое слово или вопрос.</p>';return}const found=articles.filter(a=>(a.title+' '+a.description+' '+a.category+' '+a.keywords).toLocaleLowerCase('ru').includes(q));results.innerHTML=found.length?found.map(a=>'<a class="search-result" href="'+a.url+'"><small>'+a.category+'</small><strong>'+a.title+'</strong><span>'+a.description+'</span></a>').join(''):'<p class="search-hint">По этому запросу пока ничего не найдено. Попробуйте другое слово.</p>'});
+const toggle=document.getElementById('menuToggle'),nav=document.querySelector('.main-nav');toggle?.addEventListener('click',()=>{const opened=nav.classList.toggle('open');toggle.setAttribute('aria-expanded',String(opened));toggle.setAttribute('aria-label',opened?'Закрыть меню':'Открыть меню')});nav?.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>{nav.classList.remove('open');toggle?.setAttribute('aria-expanded','false')}));
+})();

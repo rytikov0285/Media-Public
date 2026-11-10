@@ -1,0 +1,110 @@
+name: Deploy MediaPlatforma to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Validate static website
+        run: |
+          python - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          from urllib.parse import urlsplit, unquote
+          import xml.etree.ElementTree as ET
+
+          root = Path("site").resolve()
+          assert (root / "index.html").is_file(), "site/index.html is missing"
+          assert (root / "404.html").is_file(), "site/404.html is missing"
+          assert (root / "robots.txt").is_file(), "site/robots.txt is missing"
+          assert (root / "sitemap.xml").is_file(), "site/sitemap.xml is missing"
+          assert (root / "assets/css/site.css").is_file(), "site CSS is missing"
+          assert (root / "assets/js/site.js").is_file(), "site JavaScript is missing"
+
+          class PageParser(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.links = []
+                  self.ids = set()
+              def handle_starttag(self, tag, attrs):
+                  attrs = dict(attrs)
+                  if attrs.get("id"):
+                      self.ids.add(attrs["id"])
+                  for key in ("href", "src"):
+                      if attrs.get(key):
+                          self.links.append((key, attrs[key]))
+
+          pages = sorted(root.rglob("*.html"))
+          assert len(pages) >= 10, f"Expected at least 10 HTML pages, found {len(pages)}"
+          parsed = {}
+          for page in pages:
+              parser = PageParser()
+              parser.feed(page.read_text(encoding="utf-8"))
+              parser.close()
+              parsed[page] = parser
+
+          errors = []
+          for page, parser in parsed.items():
+              for kind, value in parser.links:
+                  parts = urlsplit(value)
+                  if parts.scheme or parts.netloc or value.startswith("//"):
+                      continue
+                  if kind == "href" and not parts.path and parts.fragment:
+                      if parts.fragment not in parser.ids:
+                          errors.append(f"{page.relative_to(root)}: missing anchor #{parts.fragment}")
+                      continue
+                  if not parts.path:
+                      continue
+                  rel = unquote(parts.path).lstrip("/")
+                  target = (root / rel) if parts.path.startswith("/") else (page.parent / rel)
+                  if parts.path.endswith("/"):
+                      target = target / "index.html"
+                  target = target.resolve()
+                  if not target.is_relative_to(root) or not target.is_file():
+                      errors.append(f"{page.relative_to(root)}: broken {kind}={value}")
+
+          assert not errors, "\\n".join(errors)
+          sitemap = ET.parse(root / "sitemap.xml")
+          locs = [node.text or "" for node in sitemap.findall(".//{*}loc")]
+          assert locs, "sitemap.xml contains no URLs"
+          assert all("rytikov0285.github.io/Media-Public/" in loc for loc in locs), "Sitemap contains an unexpected host or base path"
+          robots = (root / "robots.txt").read_text(encoding="utf-8")
+          assert "https://rytikov0285.github.io/Media-Public/sitemap.xml" in robots, "robots.txt sitemap URL is incorrect"
+          print(f"Validated {len(pages)} HTML pages, local links, sitemap and robots.txt")
+          PY
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
