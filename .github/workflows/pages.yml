@@ -27,11 +27,6 @@ jobs:
       - name: Checkout main
         uses: actions/checkout@v4
 
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
-        with:
-          enablement: true
-
       - name: Validate static website
         run: |
           python - <<'PY'
@@ -41,12 +36,13 @@ jobs:
           import xml.etree.ElementTree as ET
 
           root = Path("site").resolve()
-          assert (root / "index.html").is_file(), "site/index.html is missing"
-          assert (root / "404.html").is_file(), "site/404.html is missing"
-          assert (root / "robots.txt").is_file(), "site/robots.txt is missing"
-          assert (root / "sitemap.xml").is_file(), "site/sitemap.xml is missing"
-          assert (root / "assets/css/site.css").is_file(), "site CSS is missing"
-          assert (root / "assets/js/site.js").is_file(), "site JavaScript is missing"
+          required = [
+              "index.html", "404.html", "robots.txt", "sitemap.xml",
+              "assets/css/site.css", "assets/js/site.js", "assets/favicon.svg",
+              "about.html", "editorial-policy.html", "privacy.html",
+          ]
+          for name in required:
+              assert (root / name).is_file(), f"Missing required file: site/{name}"
 
           class PageParser(HTMLParser):
               def __init__(self):
@@ -94,11 +90,17 @@ jobs:
           sitemap = ET.parse(root / "sitemap.xml")
           locs = [node.text or "" for node in sitemap.findall(".//{*}loc")]
           assert locs, "sitemap.xml contains no URLs"
-          assert all("rytikov0285.github.io/Media-Public/" in loc for loc in locs), "Sitemap contains an unexpected host or base path"
+          base = "https://rytikov0285.github.io/Media-Public/"
+          assert all(loc.startswith(base) for loc in locs), "Sitemap contains an unexpected URL"
           robots = (root / "robots.txt").read_text(encoding="utf-8")
-          assert "https://rytikov0285.github.io/Media-Public/sitemap.xml" in robots, "robots.txt sitemap URL is incorrect"
+          assert f"Sitemap: {base}sitemap.xml" in robots, "robots.txt sitemap URL is incorrect"
           print(f"Validated {len(pages)} HTML pages, local links, sitemap and robots.txt")
           PY
+
+      # One-time repository setting: Settings -> Pages -> Build and deployment -> Source: GitHub Actions.
+      # GITHUB_TOKEN cannot create the Pages site; do not set enablement: true here.
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
