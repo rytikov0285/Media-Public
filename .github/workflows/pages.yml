@@ -163,13 +163,30 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
+      - name: Inspect GitHub Pages configuration
+        id: pages_config
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data } = await github.request('GET /repos/{owner}/{repo}/pages', {
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+            core.info(`Pages URL: ${data.html_url}`);
+            core.info(`Custom domain: ${data.cname || '(none)'}`);
+            core.info(`HTTPS enforced: ${data.https_enforced}`);
+            core.setOutput('page_url', data.html_url);
+
       - name: Verify deployed Pages endpoints
+        env:
+          PAGES_URL: ${{ steps.pages_config.outputs.page_url }}
         run: |
           python - <<'PY'
           from urllib.request import Request, urlopen
           from time import sleep
+          import os
 
-          base = "https://rytikov0285.github.io/Media-Public/"
+          base = os.environ["PAGES_URL"].rstrip("/") + "/"
           paths = [
               "", "404.html", "about.html", "editorial-policy.html", "privacy.html",
               "articles/household-budget.html", "articles/protect-accounts.html",
@@ -186,10 +203,12 @@ jobs:
                       request = Request(url, headers={"User-Agent": "MediaPlatforma-deployment-smoke-test"})
                       with urlopen(request, timeout=20) as response:
                           body = response.read()
+                          final_url = response.geturl()
                           if response.status != 200:
-                              raise RuntimeError(f"HTTP {response.status}")
+                              raise RuntimeError(f"HTTP {response.status} at {final_url}")
                           if path == "" and b"MediaPlatforma" not in body:
-                              raise RuntimeError("Homepage response does not contain the site title")
+                              snippet = body[:300].decode("utf-8", errors="replace")
+                              raise RuntimeError(f"Unexpected homepage content at {final_url}: {snippet}")
                       last_error = None
                       break
                   except Exception as exc:
