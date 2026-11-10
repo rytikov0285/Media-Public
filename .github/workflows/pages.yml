@@ -117,7 +117,7 @@ jobs:
                       errors.append(f"{page.relative_to(root)}: missing target anchor {value}")
           assert not errors, "\\n".join(errors)
 
-          base = "https://rytikov0285.github.io/Media-Public/"
+          base = "https://news4me.ru/"
           sitemap = ET.parse(root / "sitemap.xml")
           locs = [node.text or "" for node in sitemap.findall(".//{*}loc")]
           expected = {p.canonical[0] for page, p in parsed.items() if page.name != "404.html"}
@@ -175,18 +175,43 @@ jobs:
             core.info(`Pages URL: ${data.html_url}`);
             core.info(`Custom domain: ${data.cname || '(none)'}`);
             core.info(`HTTPS enforced: ${data.https_enforced}`);
-            core.setOutput('page_url', data.html_url);
+            core.info(`Pages status: ${data.status || '(not reported)'}`);
+            if ((data.cname || '').toLowerCase() !== 'news4me.ru') {
+              throw new Error(`Unexpected GitHub Pages custom domain: ${data.cname || '(none)'}`);
+            }
+            core.setOutput('page_url', 'https://news4me.ru/');
 
-      - name: Verify deployed Pages endpoints
+      - name: Verify public domain, DNS, TLS and deployed files
         env:
           PAGES_URL: ${{ steps.pages_config.outputs.page_url }}
         run: |
           python - <<'PY'
           from urllib.request import Request, urlopen
+          from urllib.error import URLError
+          from socket import getaddrinfo
           from time import sleep
-          import os
+          import ipaddress, os
 
           base = os.environ["PAGES_URL"].rstrip("/") + "/"
+          expected_v4 = {ipaddress.ip_address(x) for x in (
+              "185.199.108.153", "185.199.109.153",
+              "185.199.110.153", "185.199.111.153"
+          )}
+          expected_v6 = {ipaddress.ip_address(x) for x in (
+              "2606:50c0:8000::153", "2606:50c0:8001::153",
+              "2606:50c0:8002::153", "2606:50c0:8003::153"
+          )}
+          addresses = {ipaddress.ip_address(item[4][0]) for item in getaddrinfo("news4me.ru", 443)}
+          actual_v4 = {x for x in addresses if x.version == 4}
+          actual_v6 = {x for x in addresses if x.version == 6}
+          if not expected_v4.issubset(actual_v4):
+              raise SystemExit(f"DNS A/ALIAS mismatch. Expected all GitHub Pages IPv4 addresses {sorted(map(str, expected_v4))}; got {sorted(map(str, actual_v4))}")
+          if actual_v4 - expected_v4:
+              raise SystemExit(f"Unexpected extra IPv4 addresses: {sorted(map(str, actual_v4 - expected_v4))}")
+          if actual_v6 - expected_v6:
+              raise SystemExit(f"Unexpected IPv6 addresses: {sorted(map(str, actual_v6 - expected_v6))}")
+          print(f"DNS OK: {sorted(map(str, addresses))}")
+
           paths = [
               "", "404.html", "about.html", "editorial-policy.html", "privacy.html",
               "articles/household-budget.html", "articles/protect-accounts.html",
@@ -200,15 +225,21 @@ jobs:
               last_error = None
               for attempt in range(12):
                   try:
-                      request = Request(url, headers={"User-Agent": "MediaPlatforma-deployment-smoke-test"})
+                      request = Request(url, headers={
+                          "User-Agent": "MediaPlatforma-deployment-smoke-test",
+                          "Accept-Encoding": "identity"
+                      })
                       with urlopen(request, timeout=20) as response:
                           body = response.read()
                           final_url = response.geturl()
                           if response.status != 200:
                               raise RuntimeError(f"HTTP {response.status} at {final_url}")
+                          if not final_url.startswith("https://news4me.ru/"):
+                              raise RuntimeError(f"Unexpected redirect destination: {final_url}")
                           if path == "" and b"MediaPlatforma" not in body:
-                              snippet = body[:300].decode("utf-8", errors="replace")
-                              raise RuntimeError(f"Unexpected homepage content at {final_url}: {snippet}")
+                              raise RuntimeError("Homepage does not contain MediaPlatforma title")
+                          if path.endswith(".html") and b"<html" not in body.lower():
+                              raise RuntimeError(f"Not an HTML document: {final_url}")
                       last_error = None
                       break
                   except Exception as exc:
@@ -216,6 +247,26 @@ jobs:
                       if attempt < 11:
                           sleep(5)
               if last_error:
-                  raise SystemExit(f"Published endpoint failed: {url}: {last_error}")
-              print(f"HTTP 200 {url}")
+                  raise SystemExit(f"Public endpoint failed: {url}: {last_error}")
+              print(f"HTTPS 200 {url}")
           PY
+
+      - name: Enforce HTTPS on GitHub Pages
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data } = await github.request('GET /repos/{owner}/{repo}/pages', {
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+            if (!data.https_enforced) {
+              const result = await github.request('PUT /repos/{owner}/{repo}/pages', {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                https_enforced: true
+              });
+              core.info(`HTTPS enforcement enabled: ${result.data.https_enforced}`);
+            } else {
+              core.info('HTTPS enforcement is already enabled.');
+            }

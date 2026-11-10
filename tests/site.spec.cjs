@@ -82,5 +82,5 @@ test('sitemap and robots are served and mutually consistent', async ({ request }
   expect(robotsResponse.status()).toBe(200);
   const robots = await robotsResponse.text();
   expect(robots).toContain('Allow: /');
-  expect(robots).toContain('Sitemap: https://rytikov0285.github.io/Media-Public/sitemap.xml');
+  expect(robots).toContain('Sitemap: https://news4me.ru/sitemap.xml');
 });
