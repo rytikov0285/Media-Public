@@ -9,7 +9,7 @@ test.describe('Published page routes and runtime', () => {
     const response = await page.goto(route);
     expect(response, route).not.toBeNull();
     expect(response.status(), route).toBe(200);
-    await expect(page.locator('title')).not.toHaveText('');
+    await expect(page).toHaveTitle(/.+/);
     await expect(page.locator('h1')).toHaveCount(1);
     await expect(page.locator('meta[name="viewport"]')).toHaveCount(1);
     expect(errors, `JavaScript errors on ${route}`).toEqual([]);
