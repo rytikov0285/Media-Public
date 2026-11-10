@@ -175,6 +175,9 @@ jobs:
             core.info(`Pages URL: ${data.html_url}`);
             core.info(`Custom domain: ${data.cname || '(none)'}`);
             core.info(`HTTPS enforced: ${data.https_enforced}`);
+            core.info(`Certificate state: ${data.https_certificate?.state || '(not reported)'}`);
+            core.info(`Protected domain state: ${data.protected_domain_state || '(not reported)'}`);
+            if (!data.https_enforced) core.warning('TLS is probed below, but automatic HTTPS enforcement requires repository administration permission.');
             core.info(`Pages status: ${data.status || '(not reported)'}`);
             if ((data.cname || '').toLowerCase() !== 'news4me.ru') {
               throw new Error(`Unexpected GitHub Pages custom domain: ${data.cname || '(none)'}`);
@@ -251,22 +254,3 @@ jobs:
               print(f"HTTPS 200 {url}")
           PY
 
-      - name: Enforce HTTPS on GitHub Pages
-        if: success()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { data } = await github.request('GET /repos/{owner}/{repo}/pages', {
-              owner: context.repo.owner,
-              repo: context.repo.repo
-            });
-            if (!data.https_enforced) {
-              const result = await github.request('PUT /repos/{owner}/{repo}/pages', {
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                https_enforced: true
-              });
-              core.info(`HTTPS enforcement enabled: ${result.data.https_enforced}`);
-            } else {
-              core.info('HTTPS enforcement is already enabled.');
-            }
