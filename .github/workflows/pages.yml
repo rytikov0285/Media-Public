@@ -136,9 +136,14 @@ jobs:
           PY
           node --check site/assets/js/site.js
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
       - name: Install browser test dependencies
         run: |
-          npm install --no-save --no-package-lock @playwright/test@1.56.1
+          npm install --no-save --no-package-lock @playwright/test@1.65.0
           npx playwright install --with-deps chromium
 
       - name: Run browser and responsive checks
@@ -157,3 +162,41 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Verify deployed Pages endpoints
+        run: |
+          python - <<'PY'
+          from urllib.request import Request, urlopen
+          from time import sleep
+
+          base = "https://rytikov0285.github.io/Media-Public/"
+          paths = [
+              "", "404.html", "about.html", "editorial-policy.html", "privacy.html",
+              "articles/household-budget.html", "articles/protect-accounts.html",
+              "articles/travel-checklist.html", "articles/verify-information.html",
+              "topics/everyday-life.html", "topics/guides.html", "topics/technology.html",
+              "assets/css/site.css", "assets/js/site.js", "assets/favicon.svg",
+              "robots.txt", "sitemap.xml",
+          ]
+          for path in paths:
+              url = base + path
+              last_error = None
+              for attempt in range(12):
+                  try:
+                      request = Request(url, headers={"User-Agent": "MediaPlatforma-deployment-smoke-test"})
+                      with urlopen(request, timeout=20) as response:
+                          body = response.read()
+                          if response.status != 200:
+                              raise RuntimeError(f"HTTP {response.status}")
+                          if path == "" and b"MediaPlatforma" not in body:
+                              raise RuntimeError("Homepage response does not contain the site title")
+                      last_error = None
+                      break
+                  except Exception as exc:
+                      last_error = exc
+                      if attempt < 11:
+                          sleep(5)
+              if last_error:
+                  raise SystemExit(f"Published endpoint failed: {url}: {last_error}")
+              print(f"HTTP 200 {url}")
+          PY
