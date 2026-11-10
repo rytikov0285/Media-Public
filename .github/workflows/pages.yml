@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - 'site/**'
+      - 'tests/**'
+      - 'playwright.config.cjs'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -33,69 +35,114 @@ jobs:
           from html.parser import HTMLParser
           from pathlib import Path
           from urllib.parse import urlsplit, unquote
+          from datetime import date
+          import json
           import xml.etree.ElementTree as ET
 
           root = Path("site").resolve()
-          required = [
-              "index.html", "404.html", "robots.txt", "sitemap.xml",
-              "assets/css/site.css", "assets/js/site.js", "assets/favicon.svg",
-              "about.html", "editorial-policy.html", "privacy.html",
-          ]
+          required = ["index.html", "404.html", "robots.txt", "sitemap.xml", "assets/css/site.css", "assets/js/site.js", "assets/favicon.svg", "about.html", "editorial-policy.html", "privacy.html"]
           for name in required:
               assert (root / name).is_file(), f"Missing required file: site/{name}"
 
           class PageParser(HTMLParser):
               def __init__(self):
                   super().__init__()
-                  self.links = []
-                  self.ids = set()
+                  self.ids, self.links, self.meta, self.canonical = [], [], {}, []
+                  self.title, self.title_open, self.h1_count = "", False, 0
+                  self.script_type, self.script_src, self.script_text = None, None, ""
+                  self.inline_handlers, self.images_without_alt, self.blank_without_noopener = [], [], []
               def handle_starttag(self, tag, attrs):
                   attrs = dict(attrs)
-                  if attrs.get("id"):
-                      self.ids.add(attrs["id"])
+                  if attrs.get("id"): self.ids.append(attrs["id"])
+                  if tag == "h1": self.h1_count += 1
+                  if tag == "title": self.title_open = True
+                  if tag == "meta":
+                      key = attrs.get("name") or attrs.get("http-equiv")
+                      if key: self.meta[key.lower()] = attrs.get("content", "")
+                  if tag == "link" and "canonical" in attrs.get("rel", "").lower().split():
+                      self.canonical.append(attrs.get("href", ""))
                   for key in ("href", "src"):
-                      if attrs.get(key):
-                          self.links.append((key, attrs[key]))
+                      if attrs.get(key): self.links.append((key, attrs[key]))
+                  if tag == "script":
+                      self.script_type, self.script_src, self.script_text = attrs.get("type", "").lower(), attrs.get("src"), ""
+                  if tag == "img" and "alt" not in attrs: self.images_without_alt.append(attrs)
+                  self.inline_handlers.extend(k for k in attrs if k.lower().startswith("on"))
+                  if tag == "a" and attrs.get("target") == "_blank" and "noopener" not in attrs.get("rel", "").lower().split():
+                      self.blank_without_noopener.append(attrs.get("href", ""))
+              def handle_data(self, data):
+                  if self.title_open: self.title += data
+                  if self.script_type == "application/ld+json": self.script_text += data
+              def handle_endtag(self, tag):
+                  if tag == "title": self.title_open = False
+                  if tag == "script" and self.script_type is not None:
+                      if self.script_type == "application/ld+json": json.loads(self.script_text)
+                      elif not self.script_src: raise AssertionError("Unexpected inline executable script")
+                      self.script_type, self.script_src, self.script_text = None, None, ""
 
           pages = sorted(root.rglob("*.html"))
-          assert len(pages) >= 10, f"Expected at least 10 HTML pages, found {len(pages)}"
+          assert len(pages) == 12, f"Expected 12 HTML pages, found {len(pages)}"
           parsed = {}
           for page in pages:
               parser = PageParser()
-              parser.feed(page.read_text(encoding="utf-8"))
-              parser.close()
+              parser.feed(page.read_text(encoding="utf-8")); parser.close()
+              rel = page.relative_to(root).as_posix()
+              assert parser.title.strip(), f"{rel}: missing title"
+              assert parser.h1_count == 1, f"{rel}: expected exactly one h1"
+              assert len(parser.ids) == len(set(parser.ids)), f"{rel}: duplicate ids"
+              assert parser.meta.get("viewport"), f"{rel}: missing viewport"
+              assert parser.meta.get("content-security-policy"), f"{rel}: missing CSP"
+              assert parser.meta.get("referrer") == "strict-origin-when-cross-origin", f"{rel}: missing referrer policy"
+              assert not parser.inline_handlers and not parser.images_without_alt and not parser.blank_without_noopener, f"{rel}: accessibility/security markup issue"
+              assert bool(parser.canonical) == (rel != "404.html"), f"{rel}: canonical policy mismatch"
+              if rel != "404.html": assert parser.meta.get("description"), f"{rel}: missing description"
+              source = page.read_text(encoding="utf-8")
+              if 'class="main-nav"' in source:
+                  assert 'id="primaryNav"' in source and 'id="menuToggle"' in source, f"{rel}: mobile navigation toggle missing"
+                  assert "assets/js/site.js" in source, f"{rel}: navigation JavaScript missing"
               parsed[page] = parser
 
           errors = []
           for page, parser in parsed.items():
               for kind, value in parser.links:
                   parts = urlsplit(value)
-                  if parts.scheme or parts.netloc or value.startswith("//"):
-                      continue
-                  if kind == "href" and not parts.path and parts.fragment:
-                      if parts.fragment not in parser.ids:
-                          errors.append(f"{page.relative_to(root)}: missing anchor #{parts.fragment}")
-                      continue
-                  if not parts.path:
-                      continue
-                  rel = unquote(parts.path).lstrip("/")
-                  target = (root / rel) if parts.path.startswith("/") else (page.parent / rel)
-                  if parts.path.endswith("/"):
-                      target = target / "index.html"
+                  if parts.scheme.lower() in ("http", "https", "mailto", "tel") or parts.netloc or value.startswith("//"): continue
+                  if parts.scheme: errors.append(f"{page.relative_to(root)}: unsupported URL scheme in {value}"); continue
+                  rel_path = unquote(parts.path)
+                  target = page if not rel_path else (root / rel_path.lstrip("/") if rel_path.startswith("/") else page.parent / rel_path)
+                  if rel_path.endswith("/"): target = target / "index.html"
                   target = target.resolve()
-                  if not target.is_relative_to(root) or not target.is_file():
-                      errors.append(f"{page.relative_to(root)}: broken {kind}={value}")
-
+                  if not target.is_relative_to(root): errors.append(f"{page.relative_to(root)}: link escapes site root: {value}"); continue
+                  if not target.is_file(): errors.append(f"{page.relative_to(root)}: broken {kind}={value}"); continue
+                  if parts.fragment and target.suffix.lower() == ".html" and unquote(parts.fragment) not in set(parsed[target].ids):
+                      errors.append(f"{page.relative_to(root)}: missing target anchor {value}")
           assert not errors, "\\n".join(errors)
+
+          base = "https://rytikov0285.github.io/Media-Public/"
           sitemap = ET.parse(root / "sitemap.xml")
           locs = [node.text or "" for node in sitemap.findall(".//{*}loc")]
-          assert locs, "sitemap.xml contains no URLs"
-          base = "https://rytikov0285.github.io/Media-Public/"
-          assert all(loc.startswith(base) for loc in locs), "Sitemap contains an unexpected URL"
+          expected = {p.canonical[0] for page, p in parsed.items() if page.name != "404.html"}
+          assert len(locs) == len(set(locs)), "sitemap.xml contains duplicate URLs"
+          assert set(locs) == expected, "Sitemap does not exactly match canonical indexable pages"
+          assert all(loc.startswith(base) for loc in locs), "Unexpected sitemap URL"
+          for node in sitemap.findall(".//{*}lastmod"): date.fromisoformat(node.text or "")
           robots = (root / "robots.txt").read_text(encoding="utf-8")
-          assert f"Sitemap: {base}sitemap.xml" in robots, "robots.txt sitemap URL is incorrect"
-          print(f"Validated {len(pages)} HTML pages, local links, sitemap and robots.txt")
+          assert "User-agent: *" in robots and "Allow: /" in robots
+          assert f"Sitemap: {base}sitemap.xml" in robots
+          css = (root / "assets/css/site.css").read_text(encoding="utf-8")
+          assert "@import" not in css.lower(), "Third-party CSS import is forbidden"
+          assert "@media(max-width:620px)" in css.replace(" ", "")
+          assert "prefers-reduced-motion:reduce" in css.replace(" ", "")
+          print(f"Validated {len(pages)} HTML pages, links/fragments, JSON-LD, security metadata, sitemap and robots.txt")
           PY
+          node --check site/assets/js/site.js
+
+      - name: Install browser test dependencies
+        run: |
+          npm install --no-save --no-package-lock @playwright/test@1.56.1
+          npx playwright install --with-deps chromium
+
+      - name: Run browser and responsive checks
+        run: npx playwright test
 
       # One-time repository setting: Settings -> Pages -> Build and deployment -> Source: GitHub Actions.
       # GITHUB_TOKEN cannot create the Pages site; do not set enablement: true here.
