@@ -99,3 +99,9 @@ body{font-size:16px;line-height:1.7}
  .plain-page p,.plain-page li{font-size:14px}
  .section-heading>p{font-size:11px}
 }
+
+@media(max-width:620px){
+ .search-toggle{width:40px;min-width:40px;height:40px;padding:0;display:grid;place-items:center;font-size:0}
+ .search-toggle::before{content:'⌕';font-size:21px;line-height:1}
+ .search-toggle span{display:none}
+}
