@@ -11,7 +11,7 @@ function readSaved(){try{const value=JSON.parse(localStorage.getItem(storageKey)
 let saved=readSaved();
 function button(label,className){const el=document.createElement('button');el.type='button';el.className=className;el.textContent=label;return el}
 function ensureSearch(){
- let open=document.getElementById('searchOpen');
+ let open=document.getElementById('searchOpen')||document.querySelector('.header-inner a.search-toggle');
  if(open?.tagName==='A'){const replacement=button(open.textContent.trim()||'Поиск','search-toggle');replacement.id='searchOpen';replacement.setAttribute('aria-label','Открыть поиск');replacement.setAttribute('aria-controls','searchPanel');replacement.setAttribute('aria-expanded','false');open.replaceWith(replacement);open=replacement}
  if(!open){const header=document.querySelector('.header-inner');const menu=document.getElementById('menuToggle');if(header){open=button('⌕ Поиск','search-toggle');open.id='searchOpen';open.setAttribute('aria-label','Открыть поиск');open.setAttribute('aria-controls','searchPanel');open.setAttribute('aria-expanded','false');header.insertBefore(open,menu||null)}}
  let panel=document.getElementById('searchPanel');
