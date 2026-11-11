@@ -59,3 +59,5 @@ button{cursor:pointer}
 @media(prefers-reduced-motion:reduce){
  .feature-card,.topic-card,.saved-card,.filter-chip,.article-tool,.search-result{transition:none!important}
 }
+
+@media(max-width:620px){.menu-toggle{margin-left:0}.search-toggle{margin-left:auto}}
