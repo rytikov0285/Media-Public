@@ -17,7 +17,7 @@ permissions:
 
 concurrency:
   group: github-pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -40,9 +40,10 @@ jobs:
           import xml.etree.ElementTree as ET
 
           root = Path("site").resolve()
-          required = ["index.html", "404.html", "robots.txt", "sitemap.xml", "assets/css/site.css", "assets/js/site.js", "assets/favicon.svg", "about.html", "editorial-policy.html", "privacy.html"]
+          required = ["index.html", "404.html", "robots.txt", "sitemap.xml", "assets/css/site.css", "assets/js/site.js", "assets/favicon.svg", "about.html", "editorial-policy.html", "privacy.html", "CNAME"
           for name in required:
               assert (root / name).is_file(), f"Missing required file: site/{name}"
+          assert (root / "CNAME").read_text(encoding="utf-8").strip() == "news4me.ru", "site/CNAME must contain the primary custom domain news4me.ru"
 
           class PageParser(HTMLParser):
               def __init__(self):
@@ -196,7 +197,7 @@ jobs:
           from urllib.error import URLError
           from socket import getaddrinfo
           from time import sleep
-          import ipaddress, os
+          import ipaddress, os, json
 
           base = os.environ["PAGES_URL"].rstrip("/") + "/"
           expected_v4 = {ipaddress.ip_address(x) for x in (
@@ -217,6 +218,18 @@ jobs:
           if actual_v6 - expected_v6:
               raise SystemExit(f"Unexpected IPv6 addresses: {sorted(map(str, actual_v6 - expected_v6))}")
           print(f"DNS OK: {sorted(map(str, addresses))}")
+
+          cname_response = urlopen(Request(
+              "https://dns.google/resolve?name=www.news4me.ru&type=CNAME",
+              headers={"accept": "application/dns-json"}
+          ), timeout=15)
+          cname_payload = json.loads(cname_response.read().decode("utf-8"))
+          www_targets = [record.get("data", "").rstrip(".").lower()
+                         for record in cname_payload.get("Answer", [])
+                         if record.get("type") == 5]
+          if "rytikov0285.github.io" not in www_targets:
+              raise SystemExit(f"www.news4me.ru must have a CNAME to rytikov0285.github.io.; got {www_targets or \"no CNAME answer\"}")
+          print(f"www CNAME OK: {www_targets}")
 
           paths = [
               "", "404.html", "about.html", "editorial-policy.html", "privacy.html",
@@ -255,5 +268,13 @@ jobs:
               if last_error:
                   raise SystemExit(f"Public endpoint failed: {url}: {last_error}")
               print(f"HTTPS 200 {url}")
+          www_request = Request("https://www.news4me.ru/", headers={
+              "User-Agent": "MediaPlatforma-deployment-smoke-test",
+              "Accept-Encoding": "identity"
+          })
+          with urlopen(www_request, timeout=20) as response:
+              if response.status != 200 or not response.geturl().startswith("https://news4me.ru/"):
+                  raise SystemExit(f"www hostname did not redirect to canonical HTTPS domain: {response.geturl()} (HTTP {response.status})")
+          print("HTTPS 200 www.news4me.ru -> news4me.ru")
           PY
 
