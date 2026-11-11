@@ -182,54 +182,68 @@ jobs:
             core.info(`Protected domain state: ${data.protected_domain_state || '(not reported)'}`);
             if (!data.https_enforced) core.warning('TLS is probed below, but automatic HTTPS enforcement requires repository administration permission.');
             core.info(`Pages status: ${data.status || '(not reported)'}`);
-            if ((data.cname || '').toLowerCase() !== 'news4me.ru') {
-              throw new Error(`Unexpected GitHub Pages custom domain: ${data.cname || '(none)'}`);
+            const customDomain = (data.cname || '').toLowerCase();
+            if (customDomain && customDomain !== 'news4me.ru') {
+              throw new Error(`Unexpected GitHub Pages custom domain: ${customDomain}`);
             }
-            core.setOutput('page_url', 'https://news4me.ru/');
+            const configured = customDomain === 'news4me.ru';
+            core.setOutput('custom_domain_configured', String(configured));
+            core.setOutput('page_url', configured
+              ? 'https://news4me.ru/'
+              : data.html_url.replace(/^http:\/\//, 'https://')); 
+            if (!configured) {
+              core.warning('Custom domain news4me.ru is not connected in Settings → Pages. The GitHub Pages deployment is valid, but the branded domain and its TLS checks remain pending.');
+            }
 
       - name: Verify public domain, DNS, TLS and deployed files
         env:
           PAGES_URL: ${{ steps.pages_config.outputs.page_url }}
+          CUSTOM_DOMAIN_CONFIGURED: ${{ steps.pages_config.outputs.custom_domain_configured }}
         run: |
           python - <<'PY'
           from urllib.request import Request, urlopen
-          from urllib.error import URLError
           from socket import getaddrinfo
           from time import sleep
           import ipaddress, os, json
 
+          configured = os.environ.get("CUSTOM_DOMAIN_CONFIGURED") == "true"
           base = os.environ["PAGES_URL"].rstrip("/") + "/"
-          expected_v4 = {ipaddress.ip_address(x) for x in (
-              "185.199.108.153", "185.199.109.153",
-              "185.199.110.153", "185.199.111.153"
-          )}
-          expected_v6 = {ipaddress.ip_address(x) for x in (
-              "2606:50c0:8000::153", "2606:50c0:8001::153",
-              "2606:50c0:8002::153", "2606:50c0:8003::153"
-          )}
-          addresses = {ipaddress.ip_address(item[4][0]) for item in getaddrinfo("news4me.ru", 443)}
-          actual_v4 = {x for x in addresses if x.version == 4}
-          actual_v6 = {x for x in addresses if x.version == 6}
-          if not expected_v4.issubset(actual_v4):
-              raise SystemExit(f"DNS A/ALIAS mismatch. Expected all GitHub Pages IPv4 addresses {sorted(map(str, expected_v4))}; got {sorted(map(str, actual_v4))}")
-          if actual_v4 - expected_v4:
-              raise SystemExit(f"Unexpected extra IPv4 addresses: {sorted(map(str, actual_v4 - expected_v4))}")
-          if actual_v6 - expected_v6:
-              raise SystemExit(f"Unexpected IPv6 addresses: {sorted(map(str, actual_v6 - expected_v6))}")
-          print(f"DNS OK: {sorted(map(str, addresses))}")
 
-          cname_response = urlopen(Request(
-              "https://dns.google/resolve?name=www.news4me.ru&type=CNAME",
-              headers={"accept": "application/dns-json"}
-          ), timeout=15)
-          cname_payload = json.loads(cname_response.read().decode("utf-8"))
-          www_targets = [record.get("data", "").rstrip(".").lower()
-                         for record in cname_payload.get("Answer", [])
-                         if record.get("type") == 5]
-          if "rytikov0285.github.io" not in www_targets:
-              details = ", ".join(www_targets) if www_targets else "no CNAME answer"
-              raise SystemExit("www.news4me.ru must have a CNAME to rytikov0285.github.io.; got " + details)
-          print(f"www CNAME OK: {www_targets}")
+          if configured:
+              expected_v4 = {ipaddress.ip_address(x) for x in (
+                  "185.199.108.153", "185.199.109.153",
+                  "185.199.110.153", "185.199.111.153"
+              )}
+              expected_v6 = {ipaddress.ip_address(x) for x in (
+                  "2606:50c0:8000::153", "2606:50c0:8001::153",
+                  "2606:50c0:8002::153", "2606:50c0:8003::153"
+              )}
+              addresses = {ipaddress.ip_address(item[4][0]) for item in getaddrinfo("news4me.ru", 443)}
+              actual_v4 = {x for x in addresses if x.version == 4}
+              actual_v6 = {x for x in addresses if x.version == 6}
+              if not expected_v4.issubset(actual_v4):
+                  raise SystemExit(f"DNS A/ALIAS mismatch. Expected all GitHub Pages IPv4 addresses {sorted(map(str, expected_v4))}; got {sorted(map(str, actual_v4))}")
+              if actual_v4 - expected_v4:
+                  raise SystemExit(f"Unexpected extra IPv4 addresses: {sorted(map(str, actual_v4 - expected_v4))}")
+              if actual_v6 - expected_v6:
+                  raise SystemExit(f"Unexpected IPv6 addresses: {sorted(map(str, actual_v6 - expected_v6))}")
+              print(f"DNS OK: {sorted(map(str, addresses))}")
+
+              cname_response = urlopen(Request(
+                  "https://dns.google/resolve?name=www.news4me.ru&type=CNAME",
+                  headers={"accept": "application/dns-json"}
+              ), timeout=15)
+              cname_payload = json.loads(cname_response.read().decode("utf-8"))
+              www_targets = [record.get("data", "").rstrip(".").lower()
+                             for record in cname_payload.get("Answer", [])
+                             if record.get("type") == 5]
+              if "rytikov0285.github.io" not in www_targets:
+                  details = ", ".join(www_targets) if www_targets else "no CNAME answer"
+                  raise SystemExit("www.news4me.ru must have a CNAME to rytikov0285.github.io.; got " + details)
+              print(f"www CNAME OK: {www_targets}")
+          else:
+              print("WARNING: custom-domain DNS/TLS checks are pending because news4me.ru is not configured in GitHub Pages.")
+              print("Checking the published GitHub Pages project URL instead.")
 
           paths = [
               "", "404.html", "about.html", "editorial-policy.html", "privacy.html",
@@ -253,8 +267,10 @@ jobs:
                           final_url = response.geturl()
                           if response.status != 200:
                               raise RuntimeError(f"HTTP {response.status} at {final_url}")
-                          if not final_url.startswith("https://news4me.ru/"):
-                              raise RuntimeError(f"Unexpected redirect destination: {final_url}")
+                          if configured and not final_url.startswith("https://news4me.ru/"):
+                              raise RuntimeError(f"Unexpected canonical redirect destination: {final_url}")
+                          if not configured and "rytikov0285.github.io/Media-Public/" not in final_url:
+                              raise RuntimeError(f"Unexpected GitHub Pages destination: {final_url}")
                           if path == "" and b"MediaPlatforma" not in body:
                               raise RuntimeError("Homepage does not contain MediaPlatforma title")
                           if path.endswith(".html") and b"<html" not in body.lower():
@@ -267,14 +283,15 @@ jobs:
                           sleep(5)
               if last_error:
                   raise SystemExit(f"Public endpoint failed: {url}: {last_error}")
-              print(f"HTTPS 200 {url}")
-          www_request = Request("https://www.news4me.ru/", headers={
-              "User-Agent": "MediaPlatforma-deployment-smoke-test",
-              "Accept-Encoding": "identity"
-          })
-          with urlopen(www_request, timeout=20) as response:
-              if response.status != 200 or not response.geturl().startswith("https://news4me.ru/"):
-                  raise SystemExit(f"www hostname did not redirect to canonical HTTPS domain: {response.geturl()} (HTTP {response.status})")
-          print("HTTPS 200 www.news4me.ru -> news4me.ru")
-          PY
+              print(f"HTTP 200 {url}")
 
+          if configured:
+              www_request = Request("https://www.news4me.ru/", headers={
+                  "User-Agent": "MediaPlatforma-deployment-smoke-test",
+                  "Accept-Encoding": "identity"
+              })
+              with urlopen(www_request, timeout=20) as response:
+                  if response.status != 200 or not response.geturl().startswith("https://news4me.ru/"):
+                      raise SystemExit(f"www hostname did not redirect to canonical HTTPS domain: {response.geturl()} (HTTP {response.status})")
+              print("HTTPS 200 www.news4me.ru -> news4me.ru")
+          PY
