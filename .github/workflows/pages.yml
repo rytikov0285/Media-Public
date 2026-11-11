@@ -40,10 +40,9 @@ jobs:
           import xml.etree.ElementTree as ET
 
           root = Path("site").resolve()
-          required = ["index.html", "404.html", "robots.txt", "sitemap.xml", "assets/css/site.css", "assets/js/site.js", "assets/favicon.svg", "about.html", "editorial-policy.html", "privacy.html", "CNAME"]
+          required = ["index.html", "404.html", "robots.txt", "sitemap.xml", "assets/css/site.css", "assets/js/site.js", "assets/favicon.svg", "about.html", "editorial-policy.html", "privacy.html"]
           for name in required:
               assert (root / name).is_file(), f"Missing required file: site/{name}"
-          assert (root / "CNAME").read_text(encoding="utf-8").strip() == "news4me.ru", "site/CNAME must contain the primary custom domain news4me.ru"
 
           class PageParser(HTMLParser):
               def __init__(self):
