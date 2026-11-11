@@ -33,9 +33,9 @@
 
 Публичный адрес MediaPlatforma: https://news4me.ru/.
 
-Домен `news4me.ru` подключён к GitHub Pages в настройках репозитория. DNS управляется у регистратора REG.RU. GitHub Pages используется как хостинг; Cloudflare Pages не используется.
+Основной домен `news4me.ru` должен быть указан в **Settings → Pages → Custom domain** репозитория. Для публикации через GitHub Actions отдельный файл `CNAME` не требуется и игнорируется GitHub Pages. DNS управляется у регистратора REG.RU. GitHub Pages используется как хостинг; Cloudflare Pages не используется.
 
-Для альтернативного адреса `www.news4me.ru` в REG.RU должна быть ровно одна запись `CNAME`: имя `www`, значение `rytikov0285.github.io.` (без `https://` и без пути). В публикуемый артефакт также включён файл `site/CNAME` со значением `news4me.ru`; он фиксирует основной домен для GitHub Pages. Не добавляйте для `www` конкурирующие записи `A` или `AAAA`.
+Для альтернативного адреса `www.news4me.ru` в REG.RU нужна запись `CNAME`: имя `www`, значение `rytikov0285.github.io.` (без `https://` и без пути). Для `www` не создавайте конкурирующие записи `A` или `AAAA`.
 
 ## Как опубликовать изменение
 
