@@ -130,6 +130,6 @@ test('article tools expose reading progress, share and active contents navigatio
   await expect(page.getByRole('button', { name: 'Сохранить материал' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Поделиться' })).toBeVisible();
   await expect(page.locator('.article-aside a[href="#section-1"]')).toBeVisible();
-  await page.locator('#section-3').scrollIntoViewIfNeeded();
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   await page.waitForFunction(() => document.querySelector('.reading-progress')?.value > 0);
 });
