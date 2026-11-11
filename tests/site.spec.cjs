@@ -84,3 +84,52 @@ test('sitemap and robots are served and mutually consistent', async ({ request }
   expect(robots).toContain('Allow: /');
   expect(robots).toContain('Sitemap: https://news4me.ru/sitemap.xml');
 });
+
+test('search is available across the site and matches all query terms', async ({ page }) => {
+  await page.goto('/articles/protect-accounts.html');
+  const open = page.getByRole('button', { name: 'Открыть поиск' });
+  await expect(open).toBeVisible();
+  await open.click();
+  await page.locator('#siteSearch').fill('цифровая защита');
+  await expect(page.locator('.search-result')).toHaveCount(1);
+  await expect(page.locator('.search-result')).toContainText('защиты личных аккаунтов');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#searchPanel')).toHaveAttribute('aria-hidden', 'true');
+});
+
+test('home filters articles by topic and restores the complete list', async ({ page }) => {
+  await page.goto('/');
+  const cards = page.locator('#latest .feature-card');
+  await expect(cards).toHaveCount(4);
+  await page.getByRole('button', { name: 'Технологии', exact: true }).click();
+  await expect(cards.filter({ hasText: 'Цифровая гигиена' })).toBeVisible();
+  await expect(cards.filter({ hasText: 'Личный бюджет' })).toBeHidden();
+  await page.getByRole('button', { name: 'Все материалы' }).click();
+  await expect(cards).toHaveCount(4);
+  await expect(cards.filter({ hasText: 'Личный бюджет' })).toBeVisible();
+});
+
+test('saved articles persist locally and appear in the home collection', async ({ page }) => {
+  await page.goto('/articles/household-budget.html');
+  const save = page.getByRole('button', { name: 'Сохранить материал' });
+  await expect(save).toHaveAttribute('aria-pressed', 'false');
+  await save.click();
+  await expect(page.getByRole('button', { name: 'Сохранено' })).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('mediaplatforma:saved:v1') || '[]'))).toContain('household-budget');
+  await page.goto('/');
+  await expect(page.locator('#savedSection .saved-card')).toHaveCount(1);
+  await expect(page.locator('#savedSection')).toContainText('Личный бюджет');
+  await page.goto('/articles/household-budget.html');
+  await page.getByRole('button', { name: 'Сохранено' }).click();
+  await expect(page.getByRole('button', { name: 'Сохранить материал' })).toHaveAttribute('aria-pressed', 'false');
+});
+
+test('article tools expose reading progress, share and active contents navigation', async ({ page }) => {
+  await page.goto('/articles/verify-information.html');
+  await expect(page.locator('.reading-progress')).toBeAttached();
+  await expect(page.getByRole('button', { name: 'Сохранить материал' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Поделиться' })).toBeVisible();
+  await expect(page.locator('.article-aside a[href="#section-1"]')).toBeVisible();
+  await page.locator('#section-3').scrollIntoViewIfNeeded();
+  await expect(page.locator('.reading-progress').evaluate(el => el.value)).resolves.toBeGreaterThan(0);
+});
