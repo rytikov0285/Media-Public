@@ -144,6 +144,14 @@
   }
 
   playButton.addEventListener("click", async () => {
+    if (!songAudio.paused) {
+      songAudio.pause();
+      playButton.textContent = "▶ Продолжить";
+      $("playState").textContent = "Пауза";
+      if (animationFrame) cancelAnimationFrame(animationFrame);
+      animationFrame = 0;
+      return;
+    }
     try {
       connectAnalyser();
       if (audioContext && audioContext.state === "suspended") await audioContext.resume();
@@ -153,14 +161,6 @@
       animateAudio();
     } catch (error) {
       notify("Не удалось воспроизвести аудио. Проверьте формат файла.");
-    }
-  });
-
-  playButton.addEventListener("click", async () => {
-    if (!songAudio.paused) {
-      songAudio.pause();
-      playButton.textContent = "▶ Продолжить";
-      $("playState").textContent = "Пауза";
     }
   });
 
