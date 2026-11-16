@@ -306,8 +306,8 @@
       const min=Math.abs(l1-l2)+1e-4,max=l1+l2-1e-4,dist=Math.max(min,Math.min(max,d));
       const along=(l1*l1-l2*l2+dist*dist)/(2*dist);
       const height=Math.sqrt(Math.max(0,l1*l1-along*along));
-      const resolvedTarget={x:a.x+dx/dist*dist,y:a.y+dy/dist*dist};
-      return {elbow:{x:a.x+dx/dist*along-bend*dy/dist*height,y:a.y+dy/dist*along+bend*dx/dist*height},target:resolvedTarget};
+      const resolvedTarget={x:a.x+dx/d*dist,y:a.y+dy/d*dist};
+      return {elbow:{x:a.x+dx/d*along-bend*dy/d*height,y:a.y+dy/d*along+bend*dx/d*height},target:resolvedTarget};
     }
     function makeDeformation(){
       const next={};
