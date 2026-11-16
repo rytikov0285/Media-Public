@@ -231,53 +231,134 @@
 
   function initRigEditor() {
     const canvas = $("rigCanvas"), ctx = canvas.getContext("2d");
-    const fileInput = $("rigPhotoInput"), partSelect = $("rigPart"), modeSelect=$("rigMode"), jointSelect=$("rigJoint");
+    const preview = $("rigPreview"), pctx = preview.getContext("2d");
+    const fileInput = $("rigPhotoInput"), partSelect = $("rigPart"), modeSelect = $("rigMode"), jointSelect = $("rigJoint");
     const closeBtn = $("rigClosePolygon"), undoBtn = $("rigUndo"), clearBtn = $("rigClear");
     const buildBtn = $("rigBuildLayers"), exportBtn = $("rigExport"), poseBtn = $("rigPose");
+    const applyBtn = $("rigApplyDeform"), resetBtn = $("rigResetDeform");
     const status = $("rigStatus"), empty = $("rigEmpty");
     const palette = {head:"#f4c66a",torso:"#73c9ff",leftUpperArm:"#f28b82",leftForearm:"#c3a6ff",leftHand:"#f9a8d4",rightUpperArm:"#81c995",rightForearm:"#f6ad55",rightHand:"#9caeff"};
-    const say = (s) => { status.textContent=s; };
-    const fit = () => {
-      if(!rig.image) return;
-      const ratio=Math.min(canvas.width/rig.image.width,canvas.height/rig.image.height);
-      rig.scale=ratio; rig.offsetX=(canvas.width-rig.image.width*ratio)/2; rig.offsetY=(canvas.height-rig.image.height*ratio)/2;
+    const say = (message) => { status.textContent = message; };
+    let deformation = null;
+    const fit = (target) => {
+      if (!rig.image) return;
+      const scale = Math.min(target.width / rig.image.width, target.height / rig.image.height);
+      return {scale, x:(target.width-rig.image.width*scale)/2, y:(target.height-rig.image.height*scale)/2};
     };
-    const toSource = (x,y) => ({x:(x-rig.offsetX)/rig.scale,y:(y-rig.offsetY)/rig.scale});
-    const toCanvas = (p) => ({x:rig.offsetX+p.x*rig.scale,y:rig.offsetY+p.y*rig.scale});
-    function draw() {
+    const sourcePoint = (x,y,view) => ({x:(x-view.x)/view.scale,y:(y-view.y)/view.scale});
+    const viewPoint = (p,view) => ({x:view.x+p.x*view.scale,y:view.y+p.y*view.scale});
+    function drawEditor() {
       ctx.clearRect(0,0,canvas.width,canvas.height);
-      if(!rig.image) return;
-      fit(); ctx.fillStyle="#091526";ctx.fillRect(0,0,canvas.width,canvas.height);
-      ctx.drawImage(rig.image,rig.offsetX,rig.offsetY,rig.image.width*rig.scale,rig.image.height*rig.scale);
+      if (!rig.image) return;
+      const view=fit(canvas);
+      ctx.fillStyle="#091526";ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.drawImage(rig.image,view.x,view.y,rig.image.width*view.scale,rig.image.height*view.scale);
       Object.entries(rig.masks).forEach(([name,poly])=>{
-        if(poly.length<3)return;ctx.beginPath();poly.forEach((p,i)=>{const q=toCanvas(p);i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y)});ctx.closePath();
-        ctx.fillStyle=palette[name]+"35";ctx.strokeStyle=palette[name];ctx.lineWidth=2;ctx.fill();ctx.stroke();
+        if(poly.length<3)return;
+        ctx.beginPath();poly.forEach((p,i)=>{const q=viewPoint(p,view);i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y)});
+        ctx.closePath();ctx.fillStyle=(palette[name]||"#fff")+"35";ctx.strokeStyle=palette[name]||"#fff";ctx.lineWidth=2;ctx.fill();ctx.stroke();
       });
-      if(rig.points.length){ctx.beginPath();rig.points.forEach((p,i)=>{const q=toCanvas(p);i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y)});const last=toCanvas(rig.points[rig.points.length-1]);ctx.lineTo(last.x,last.y);ctx.strokeStyle=palette[rig.activePart];ctx.lineWidth=2;ctx.stroke();rig.points.forEach(p=>{const q=toCanvas(p);ctx.beginPath();ctx.arc(q.x,q.y,5,0,Math.PI*2);ctx.fillStyle="#fff";ctx.fill();ctx.strokeStyle=palette[rig.activePart];ctx.stroke()})}
-      ["left","right"].forEach(side=>{const a=rig.joints[side+"Shoulder"],b=rig.joints[side+"ElbowSolved"]||rig.joints[side+"Elbow"],c=rig.joints[side+"Wrist"];if(a&&b&&c){const p=toCanvas(a),q=toCanvas(b),r=toCanvas(c);ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.lineTo(r.x,r.y);ctx.strokeStyle=side==="left"?"#ff9b91":"#8ee0ad";ctx.lineWidth=4;ctx.stroke()}});
-      Object.entries(rig.joints).forEach(([name,p])=>{const q=toCanvas(p);ctx.beginPath();ctx.arc(q.x,q.y,7,0,Math.PI*2);ctx.fillStyle=name.endsWith("Solved")?"#79e0ff":"#ffe08a";ctx.fill();ctx.strokeStyle="#17263c";ctx.lineWidth=2;ctx.stroke();ctx.fillStyle="#fff";ctx.font="12px sans-serif";ctx.fillText(name,q.x+9,q.y-8)});
+      if(rig.points.length){
+        ctx.beginPath();rig.points.forEach((p,i)=>{const q=viewPoint(p,view);i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y)});
+        ctx.strokeStyle=palette[rig.activePart]||"#fff";ctx.lineWidth=2;ctx.stroke();
+        rig.points.forEach(p=>{const q=viewPoint(p,view);ctx.beginPath();ctx.arc(q.x,q.y,5,0,Math.PI*2);ctx.fillStyle="#fff";ctx.fill();ctx.strokeStyle=palette[rig.activePart]||"#fff";ctx.stroke()});
+      }
+      Object.entries(rig.joints).filter(([name])=>!name.endsWith("Solved")).forEach(([name,p])=>{
+        const q=viewPoint(p,view);ctx.beginPath();ctx.arc(q.x,q.y,7,0,Math.PI*2);ctx.fillStyle="#ffe08a";ctx.fill();ctx.strokeStyle="#17263c";ctx.lineWidth=2;ctx.stroke();
+        ctx.fillStyle="#fff";ctx.font="12px sans-serif";ctx.fillText(name,q.x+9,q.y-8);
+      });
     }
+    function drawPreview() {
+      pctx.clearRect(0,0,preview.width,preview.height);
+      if(!rig.image)return;
+      const view=fit(preview);
+      pctx.fillStyle="#091526";pctx.fillRect(0,0,preview.width,preview.height);
+      pctx.save();pctx.setTransform(view.scale,0,0,view.scale,view.x,view.y);
+      const drawLayer=(name)=>{const layer=rig.layers[name];if(layer)pctx.drawImage(layer,0,0);};
+      const rotateAround=(point,angle)=>{pctx.translate(point.x,point.y);pctx.rotate(angle);pctx.translate(-point.x,-point.y);};
+      const staticOrder=["torso","neck","head"];
+      staticOrder.forEach(drawLayer);
+      ["left","right"].forEach(side=>{
+        const shoulder=rig.joints[side+"Shoulder"], elbow=rig.joints[side+"Elbow"], wrist=rig.joints[side+"Wrist"];
+        const solved=deformation&&deformation[side];
+        const upperAngle=solved?solved.upperAngle:0;
+        const foreAngle=solved?solved.foreAngle:0;
+        const handAngle=solved?solved.handAngle:0;
+        if(shoulder){
+          pctx.save();rotateAround(shoulder,upperAngle);drawLayer(side+"UpperArm");
+          if(elbow){
+            pctx.save();rotateAround(elbow,foreAngle);drawLayer(side+"Forearm");
+            if(wrist){pctx.save();rotateAround(wrist,handAngle);drawLayer(side+"Hand");pctx.restore();}
+            pctx.restore();
+          }
+          pctx.restore();
+        } else {
+          drawLayer(side+"UpperArm");drawLayer(side+"Forearm");drawLayer(side+"Hand");
+        }
+      });
+      Object.keys(rig.layers).filter(name=>!staticOrder.includes(name)&&!/(left|right)(UpperArm|Forearm|Hand)/.test(name)).forEach(drawLayer);
+      pctx.restore();
+    }
+    function draw(){drawEditor();drawPreview();}
+    function solveTwoBone(a,target,l1,l2,bend){
+      const dx=target.x-a.x,dy=target.y-a.y,d=Math.hypot(dx,dy);
+      if(!(l1>0&&l2>0&&d>0))return null;
+      const min=Math.abs(l1-l2)+1e-4,max=l1+l2-1e-4,dist=Math.max(min,Math.min(max,d));
+      const along=(l1*l1-l2*l2+dist*dist)/(2*dist);
+      const height=Math.sqrt(Math.max(0,l1*l1-along*along));
+      return {x:a.x+dx/dist*along-bend*dy/dist*height,y:a.y+dy/dist*along+bend*dx/dist*height};
+    }
+    function makeDeformation(){
+      const next={};
+      for(const side of ["left","right"]){
+        const shoulder=rig.joints[side+"Shoulder"],elbow=rig.joints[side+"Elbow"],wrist=rig.joints[side+"Wrist"];
+        if(!shoulder||!elbow||!wrist)throw new Error("Не расставлены все суставы руки: "+side);
+        const l1=Math.hypot(elbow.x-shoulder.x,elbow.y-shoulder.y);
+        const l2=Math.hypot(wrist.x-elbow.x,wrist.y-elbow.y);
+        if(l1<1||l2<1)throw new Error("Нулевая длина сегмента руки: "+side);
+        const direction=side==="left"?-1:1;
+        const reach=Math.max(12,(l1+l2)*0.18);
+        const target={x:wrist.x+direction*reach,y:wrist.y-reach*0.65};
+        const solved=solveTwoBone(shoulder,target,l1,l2,side==="left"?1:-1);
+        if(!solved)throw new Error("IK не смог решить цепочку: "+side);
+        const angle=(a,b)=>Math.atan2(b.y-a.y,b.x-a.x);
+        const upperAngle=angle(shoulder,solved)-angle(shoulder,elbow);
+        const foreAngle=angle(solved,target)-angle(elbow,wrist);
+        next[side]={target,elbow:solved,upperAngle,foreAngle,handAngle:foreAngle};
+      }
+      return next;
+    }
+    function drawBones(){
+      ["left","right"].forEach(side=>{
+        const a=rig.joints[side+"Shoulder"],b=deformation?.[side]?.elbow||rig.joints[side+"Elbow"],c=deformation?.[side]?.target||rig.joints[side+"Wrist"];
+        if(!a||!b||!c)return;
+        const view=fit(canvas),p=viewPoint(a,view),q=viewPoint(b,view),r=viewPoint(c,view);
+        ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.lineTo(r.x,r.y);
+        ctx.strokeStyle=side==="left"?"#ff9b91":"#8ee0ad";ctx.lineWidth=4;ctx.stroke();
+      });
+    }
+    const baseDrawEditor=drawEditor;
+    function refresh(){draw();if(deformation)drawBones();}
     fileInput.addEventListener("change",()=>{
       const file=fileInput.files&&fileInput.files[0];if(!file)return;
       if(!/^image\/(jpeg|png|webp)$/.test(file.type)||file.size>12*1024*1024){say("Нужен JPG, PNG или WebP до 12 МБ.");fileInput.value="";return;}
       if(rig.imageUrl)URL.revokeObjectURL(rig.imageUrl);
       rig.imageUrl=URL.createObjectURL(file);const img=new Image();
-      img.onload=()=>{rig.image=img;rig.points=[];rig.masks={};rig.layers={};rig.joints={};empty.hidden=true;[closeBtn,undoBtn,clearBtn,buildBtn].forEach(b=>b.disabled=false);exportBtn.disabled=false;poseBtn.disabled=true;draw();say("Фото загружено локально: "+img.naturalWidth+"×"+img.naturalHeight+". Обведите первый сегмент.");};
+      img.onload=()=>{rig.image=img;rig.points=[];rig.masks={};rig.layers={};rig.joints={};deformation=null;empty.hidden=true;
+        [closeBtn,undoBtn,clearBtn,buildBtn].forEach(b=>b.disabled=false);exportBtn.disabled=false;poseBtn.disabled=true;applyBtn.disabled=true;resetBtn.disabled=true;
+        draw();say("Фото загружено локально: "+img.naturalWidth+"×"+img.naturalHeight+". Обведите сегменты.");};
       img.onerror=()=>say("Не удалось прочитать изображение.");img.src=rig.imageUrl;
     });
     partSelect.addEventListener("change",()=>{rig.activePart=partSelect.value;rig.points=[];draw();say("Активный сегмент: "+partSelect.options[partSelect.selectedIndex].text);});
     canvas.addEventListener("click",e=>{
-      if(!rig.image)return;const rect=canvas.getBoundingClientRect();const x=(e.clientX-rect.left)*canvas.width/rect.width,y=(e.clientY-rect.top)*canvas.height/rect.height;
-      const point=toSource(x,y);
-      if(modeSelect.value==="joint"){
-        rig.joints[jointSelect.value]=point;
-        draw();say("Сустав "+jointSelect.options[jointSelect.selectedIndex].text+" установлен.");return;
-      }
+      if(!rig.image)return;const rect=canvas.getBoundingClientRect(),x=(e.clientX-rect.left)*canvas.width/rect.width,y=(e.clientY-rect.top)*canvas.height/rect.height;
+      const point=sourcePoint(x,y,fit(canvas));
+      if(modeSelect.value==="joint"){rig.joints[jointSelect.value]=point;deformation=null;applyBtn.disabled=false;resetBtn.disabled=true;draw();say("Сустав "+jointSelect.options[jointSelect.selectedIndex].text+" установлен.");return;}
       rig.points.push(point);undoBtn.disabled=false;closeBtn.disabled=rig.points.length<3;draw();
     });
     undoBtn.addEventListener("click",()=>{rig.points.pop();undoBtn.disabled=!rig.points.length;closeBtn.disabled=rig.points.length<3;draw();});
-    clearBtn.addEventListener("click",()=>{delete rig.masks[rig.activePart];rig.points=[];draw();say("Маска сегмента очищена.");});
-    closeBtn.addEventListener("click",()=>{if(rig.points.length<3)return;rig.masks[rig.activePart]=rig.points.map(p=>({...p}));rig.points=[];undoBtn.disabled=true;closeBtn.disabled=true;draw();say("Маска "+rig.activePart+" сохранена. Можно выбрать следующий сегмент.");});
+    clearBtn.addEventListener("click",()=>{delete rig.masks[rig.activePart];delete rig.layers[rig.activePart];rig.points=[];deformation=null;draw();say("Маска сегмента очищена.");});
+    closeBtn.addEventListener("click",()=>{if(rig.points.length<3)return;rig.masks[rig.activePart]=rig.points.map(p=>({...p}));rig.points=[];undoBtn.disabled=true;closeBtn.disabled=true;draw();say("Маска "+rig.activePart+" сохранена.");});
     buildBtn.addEventListener("click",()=>{
       if(!rig.image)return;rig.layers={};
       Object.entries(rig.masks).forEach(([name,poly])=>{
@@ -285,24 +366,24 @@
         const layer=document.createElement("canvas");layer.width=rig.image.naturalWidth;layer.height=rig.image.naturalHeight;
         const lc=layer.getContext("2d");lc.save();lc.beginPath();poly.forEach((p,i)=>i?lc.lineTo(p.x,p.y):lc.moveTo(p.x,p.y));lc.closePath();lc.clip();lc.drawImage(rig.image,0,0);lc.restore();rig.layers[name]=layer;
       });
-      const count=Object.keys(rig.layers).length;poseBtn.disabled=count<3;say("Создано "+count+" RGBA-слоёв в памяти браузера. Это маски, не восстановление скрытых пикселей.");
+      const count=Object.keys(rig.layers).length;poseBtn.disabled=count<3;applyBtn.disabled=count===0;draw();
+      say("Создано "+count+" RGBA-слоёв. Для деформации нужны маски верхней руки, предплечья и кисти с обеих сторон.");
     });
     poseBtn.addEventListener("click",()=>{
-      const names=["leftShoulder","leftElbow","leftWrist","rightShoulder","rightElbow","rightWrist"];
-      const missing=names.filter(x=>!rig.joints[x]);
-      if(missing.length){say("Сначала расставьте суставы в режиме «Расстановка суставов»: "+missing.join(", "));return;}
-      const solve=(a,target,l1,l2,sign)=>{const dx=target.x-a.x,dy=target.y-a.y,d=Math.hypot(dx,dy)||.001;const dist=Math.max(Math.abs(l1-l2)+.001,Math.min(l1+l2-.001,d));const along=(l1*l1-l2*l2+dist*dist)/(2*dist);const h=Math.sqrt(Math.max(0,l1*l1-along*along));return{x:a.x+dx/d*along-sign*dy/d*h,y:a.y+dy/d*along+sign*dx/d*h};};
-      ["left","right"].forEach(side=>{
-        const shoulder=rig.joints[side+"Shoulder"], elbow=rig.joints[side+"Elbow"], wrist=rig.joints[side+"Wrist"];
-        const l1=Math.hypot(elbow.x-shoulder.x,elbow.y-shoulder.y),l2=Math.hypot(wrist.x-elbow.x,wrist.y-elbow.y);
-        const solved=solve(shoulder,wrist,l1,l2,side==="left"?1:-1);
-        rig.joints[side+"ElbowSolved"]=solved;
-      });
-      draw();say("Двухзвенный IK рассчитан для обеих рук по заданным длинам сегментов. Жёлтые точки — исходные суставы; рассчитанные локти сохранены в состоянии проекта.");
+      try{deformation=makeDeformation();rig.joints.leftElbowSolved=deformation.left.elbow;rig.joints.rightElbowSolved=deformation.right.elbow;draw();drawBones();say("IK рассчитан. Это проверка геометрии; нажмите «Применить деформацию спрайтов» для рендеринга RGBA-слоёв.");}
+      catch(error){say(error.message);}
     });
+    applyBtn.addEventListener("click",()=>{
+      const required=["leftUpperArm","leftForearm","leftHand","rightUpperArm","rightForearm","rightHand"];
+      const missing=required.filter(name=>!rig.layers[name]);
+      if(missing.length){say("Не хватает RGBA-слоёв: "+missing.join(", ")+". Сначала создайте соответствующие маски.");return;}
+      try{deformation=makeDeformation();draw();drawBones();resetBtn.disabled=false;say("Деформация применена: 6 сегментов рук отрисованы с вращением вокруг суставов. Скрытые пиксели не восстанавливаются.");}
+      catch(error){say(error.message);}
+    });
+    resetBtn.addEventListener("click",()=>{deformation=null;delete rig.joints.leftElbowSolved;delete rig.joints.rightElbowSolved;draw();resetBtn.disabled=true;say("Деформация сброшена; RGBA-слои показаны в исходной позе.");});
     exportBtn.addEventListener("click",()=>{
-      const data={schema:"media-public.heroine-rig.v1",image:{width:rig.image?.naturalWidth||0,height:rig.image?.naturalHeight||0},masks:rig.masks,joints:rig.joints,parts:Object.keys(rig.layers),note:"Original image pixels are not embedded. Re-upload the same source image when importing this metadata."};
-      const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="heroine-rig-project.json";a.click();URL.revokeObjectURL(url);say("Метаданные проекта экспортированы. Исходная фотография не включена.");
+      const data={schema:"media-public.heroine-rig.v2",image:{width:rig.image?.naturalWidth||0,height:rig.image?.naturalHeight||0},masks:rig.masks,joints:rig.joints,parts:Object.keys(rig.layers),deformation:deformation?Object.fromEntries(Object.entries(deformation).map(([side,v])=>[side,{target:v.target,elbow:v.elbow,upperAngle:v.upperAngle,foreAngle:v.foreAngle,handAngle:v.handAngle}])):null,engine:"piecewise-rigid-canvas-2d",note:"Source pixels remain local; hidden anatomy is not reconstructed."};
+      const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="heroine-rig-project.json";a.click();URL.revokeObjectURL(url);say("Метаданные рига v2 экспортированы; изображение не включено.");
     });
     draw();
   }
