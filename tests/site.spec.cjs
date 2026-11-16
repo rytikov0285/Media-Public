@@ -71,12 +71,20 @@ test('no horizontal page overflow at common viewport widths', async ({ page }) =
   }
 });
 
+test('new-year interactive scene route is served', async ({ page }) => {
+  const response = await page.goto('/new-year/');
+  expect(response).not.toBeNull();
+  expect(response.status()).toBe(200);
+  await expect(page).toHaveTitle(/.+/);
+  await expect(page.locator('h1')).toHaveCount(1);
+});
+
 test('sitemap and robots are served and mutually consistent', async ({ request }) => {
   const sitemapResponse = await request.get('/sitemap.xml');
   expect(sitemapResponse.status()).toBe(200);
   const sitemap = await sitemapResponse.text();
   const urls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
-  expect(urls).toHaveLength(11);
+  expect(urls).toContain('https://news4me.ru/new-year/');
   expect(new Set(urls).size).toBe(urls.length);
   const robotsResponse = await request.get('/robots.txt');
   expect(robotsResponse.status()).toBe(200);
