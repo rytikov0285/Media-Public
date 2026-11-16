@@ -80,7 +80,7 @@ jobs:
                       self.script_type, self.script_src, self.script_text = None, None, ""
 
           pages = sorted(root.rglob("*.html"))
-          assert len(pages) == 12, f"Expected 12 HTML pages, found {len(pages)}"
+          assert len(pages) == 13, f"Expected 13 HTML pages, found {len(pages)}"
           parsed = {}
           for page in pages:
               parser = PageParser()
@@ -250,6 +250,7 @@ jobs:
               "articles/household-budget.html", "articles/protect-accounts.html",
               "articles/travel-checklist.html", "articles/verify-information.html",
               "topics/everyday-life.html", "topics/guides.html", "topics/technology.html",
+              "new-year/",
               "assets/css/site.css", "assets/js/site.js", "assets/favicon.svg",
               "robots.txt", "sitemap.xml",
           ]
