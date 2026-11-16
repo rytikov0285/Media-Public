@@ -1,55 +1,81 @@
-# SPEC-NY-03 — Heroine Segmentation & 2D Skeletal Rig
+# SPEC-NY-03 — Heroine Segmentation, 2D Rig & Sprite Deformation
 
-**Status:** IMPLEMENTED — SEGMENTATION EDITOR + JOINT AUTHORING + IK PREVIEW; PHOTO-SPECIFIC DEFORMATION PENDING  
+**Status:** IMPLEMENTED — MANUAL SEGMENTATION, RGBA LAYER EXTRACTION, JOINT AUTHORING, TWO-BONE IK AND PIECEWISE-RIGID CANVAS PREVIEW; BROWSER RUNTIME / PHOTO-SPECIFIC VISUAL ACCEPTANCE PENDING  
 **Branch:** main  
-**Priority:** preserve identity and source pixels; no synthetic replacement of facial/body features.
+**Priority:** preserve identity and source pixels; never synthesize hidden anatomy or facial details.
 
 ## 1. Objective
-Build an in-browser authoring workflow that converts the user's original portrait into independently controllable 2D puppet layers. The source photo remains the immutable identity master. No image is uploaded to a server.
 
-## 2. Architecture
-- SourceImage: original uploaded raster, retained unchanged in browser memory.
-- SegmentationEditor: manually authored polygon masks for head, torso, left/right upper arms, forearms and hands.
-- LayerBuilder: extracts polygon-clipped RGBA layers from source image; records source-space bounds and pivot.
-- RigGraph: parent-child hierarchy with local transforms.
-- JointEditor: draggable joint markers; shoulder, elbow, wrist, neck and root.
-- IK2D: two-bone analytic solver for upper-arm/forearm chains; reach clamping and elbow bend side.
-- PoseController: neutral, greeting, singing, chorus, finale.
-- Renderer: Canvas 2D; parent-first transforms; draw each part around its pivot.
-- ProjectState: JSON metadata and locally stored project; image pixels remain local.
+Build an in-browser authoring and preview workflow that converts the user's original portrait into independently controllable 2D sprite layers. The source photo remains immutable. All image processing stays in browser memory; no image upload or external image API is used.
 
-## 3. Segments
-Required layers: torso, neck, head, hair (optional if separable), left upper arm, left forearm, left hand, right upper arm, right forearm, right hand. User-defined polygon masks must be editable and re-traceable.
+## 2. Implemented architecture
 
-## 4. Identity and quality constraints
-1. Never generate or replace facial details.
-2. Preserve source resolution and colour values in extracted layers.
-3. Polygon edges support adjustable feathering; default 0.5 px.
-4. Do not claim seamless joints where hidden pixels are absent.
-5. Warn that occluded anatomy requires manual patch/inpainting before rotation.
-6. Keep source image immutable and provide reset-to-source.
-7. No server upload, external image API, or third-party dependency.
+- **SourceImage:** original raster loaded locally and retained unchanged.
+- **SegmentationEditor:** manually authored polygon masks for head, torso, upper arms, forearms and hands.
+- **LayerBuilder:** extracts full-source-coordinate transparent RGBA canvas layers using polygon clipping.
+- **JointEditor:** source-space joint placement for root, neck, head pivot, shoulders, elbows and wrists.
+- **IK2D:** analytic two-bone solver with reach clamping and side-dependent elbow bend.
+- **SpriteDeformationEngine:** piecewise-rigid Canvas 2D deformation. Each upper arm rotates around its shoulder; each forearm inherits the upper-arm transform and rotates around its elbow; each hand inherits both parent transforms and rotates around the wrist.
+- **PreviewRenderer:** renders static torso/head layers and articulated arm layers in a deterministic draw order.
+- **ProjectExport:** JSON metadata includes masks, joints, solved target/elbow positions and angular transforms. Source image pixels are not exported.
 
-## 5. Rig and IK
-- Parent chain: root → torso → neck → head.
-- Arm chain: torso → shoulder → upper arm → elbow → forearm → wrist → hand.
-- Two-bone IK solves elbow from shoulder, target wrist, segment lengths and bend direction.
-- Clamp unreachable targets to the maximum/minimum reachable radius.
-- Joint positions and bone lengths are stored in source-image coordinates.
-- The editor supports manual placement of root/neck/head and bilateral shoulder/elbow/wrist joints.
-- IK preview computes solved elbow positions from measured upper-arm/forearm lengths; this preview does not yet deform extracted sprite layers.
+## 3. Segment contract
+
+Required for bilateral arm deformation:
+- leftUpperArm, leftForearm, leftHand
+- rightUpperArm, rightForearm, rightHand
+
+Optional static layers:
+- torso, neck, head
+
+Layer coordinates and joint coordinates are expressed in original image pixels. Polygon masks are editable and can be retraced.
+
+## 4. Transform model
+
+The first deformation engine is piecewise-rigid, not mesh skinning.
+
+For each arm:
+1. Measure upper-arm and forearm lengths from the authored neutral joints.
+2. Generate a deterministic preview wrist target offset from the authored wrist.
+3. Solve the elbow using the two-bone law-of-cosines construction and clamp target distance to the reachable annulus.
+4. Compute upper-arm angular delta from the original shoulder→elbow vector to shoulder→solved-elbow.
+5. Compute forearm angular delta from the original elbow→wrist vector to solved-elbow→target-wrist.
+6. Apply transforms in parent-first order around shoulder, elbow and wrist pivots.
+7. Reset returns every layer to its untransformed source-space pose.
+
+The hierarchy is applied by nested Canvas transforms, so child segments inherit parent rotations. The preview is a separate canvas and does not modify the source image or segmentation authoring canvas.
+
+## 5. Identity, privacy and visual quality constraints
+
+1. Never generate, replace or retouch facial details.
+2. Preserve source resolution and source pixel colour values in extracted layers.
+3. The source photo remains unchanged.
+4. No server upload, external image API or third-party dependency.
+5. Do not claim seamless joints where hidden pixels are absent.
+6. Rotated parts may expose transparent gaps or clipped edges because polygon extraction does not reconstruct occluded anatomy.
+7. Photo-specific quality depends on accurate masks, pivot placement and draw order; these require visual inspection against the actual heroine photo.
+8. The current engine does not perform mesh warping, inverse kinematics on a deformable mesh, automatic segmentation, inpainting, pose interpolation or full-body locomotion.
 
 ## 6. Acceptance criteria
-- RIG-01 source photo loads locally and remains unchanged.
-- RIG-02 polygons can be drawn, closed, selected and cleared.
-- RIG-03 each defined segment exports as a transparent layer in browser memory.
-- RIG-04 joints can be placed and moved.
-- RIG-05 two-bone IK preview is numerically stable for reachable and unreachable targets.
-- RIG-06 pose changes interpolate without discontinuities.
-- RIG-07 project metadata can be exported/imported as JSON.
-- RIG-08 reduced-motion preference disables autoplay.
-- RIG-09 no external network request is needed for segmentation/editor.
-- RIG-10 photo-specific visual acceptance is withheld until the user's actual photo is loaded and each mask/joint alignment is inspected.
 
-## 7. Known limitations
-Automatic semantic segmentation and generative inpainting are intentionally not claimed in this release. This foundation provides manual polygon segmentation and a real 2D transform/IK rig. The exact heroine cannot be photo-specifically segmented and rigged in this repository commit because her original photo is not present in the repository or current task attachments. Once loaded in the editor, mask tracing, hidden-pixel repair and joint placement are photo-specific authoring steps. IK preview currently visualizes bone geometry; sprite deformation/pose rendering remains a subsequent implementation step.
+- RIG-01: source photo loads locally and remains unchanged.
+- RIG-02: polygons can be drawn, closed, selected and cleared.
+- RIG-03: each defined segment exports as a transparent RGBA layer in browser memory.
+- RIG-04: joints can be placed in source-image coordinates.
+- RIG-05: two-bone solver clamps reachable/unreachable targets and preserves segment lengths within floating-point tolerance.
+- RIG-06: parent-first transform propagation is applied to upper arm, forearm and hand.
+- RIG-07: applying deformation changes only the preview canvas; reset restores the neutral preview.
+- RIG-08: JSON export includes authored masks/joints and computed deformation metadata without embedding image pixels.
+- RIG-09: no external network request is needed for segmentation or deformation.
+- RIG-10: photo-specific visual acceptance is withheld until the actual photo is loaded and mask/joint alignment is inspected.
+- RIG-11: browser runtime acceptance is withheld until tested in a real browser with a representative image.
+
+## 7. Verification status and known limitations
+
+Static JavaScript syntax and DOM-reference checks are required before merge. Mathematical unit checks can validate the two-bone geometry independently. These checks do not prove Canvas rendering or browser interaction.
+
+The GitHub source photo may exist in the repository, but unless its binary content is actually retrieved and visually inspected, no claim is made about its dimensions, anatomy, mask fit or visual result.
+
+The current deformation is rigid-segment rotation. It cannot fill pixels hidden behind the torso or adjacent limbs, remove all seams automatically, or preserve realistic volume under large rotations. Manual segmentation overlap, edge feathering and hidden-pixel repair remain separate quality tasks.
+
+**Acceptance state:** implementation and static/math checks may pass independently; runtime acceptance and photo-specific visual acceptance remain PENDING until actually performed.
