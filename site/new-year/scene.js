@@ -306,7 +306,8 @@
       const min=Math.abs(l1-l2)+1e-4,max=l1+l2-1e-4,dist=Math.max(min,Math.min(max,d));
       const along=(l1*l1-l2*l2+dist*dist)/(2*dist);
       const height=Math.sqrt(Math.max(0,l1*l1-along*along));
-      return {x:a.x+dx/dist*along-bend*dy/dist*height,y:a.y+dy/dist*along+bend*dx/dist*height};
+      const resolvedTarget={x:a.x+dx/dist*dist,y:a.y+dy/dist*dist};
+      return {elbow:{x:a.x+dx/dist*along-bend*dy/dist*height,y:a.y+dy/dist*along+bend*dx/dist*height},target:resolvedTarget};
     }
     function makeDeformation(){
       const next={};
@@ -319,12 +320,13 @@
         const direction=side==="left"?-1:1;
         const reach=Math.max(12,(l1+l2)*0.18);
         const target={x:wrist.x+direction*reach,y:wrist.y-reach*0.65};
-        const solved=solveTwoBone(shoulder,target,l1,l2,side==="left"?1:-1);
-        if(!solved)throw new Error("IK не смог решить цепочку: "+side);
+        const solution=solveTwoBone(shoulder,target,l1,l2,side==="left"?1:-1);
+        if(!solution)throw new Error("IK не смог решить цепочку: "+side);
+        const solved=solution.elbow,resolvedTarget=solution.target;
         const angle=(a,b)=>Math.atan2(b.y-a.y,b.x-a.x);
         const upperAngle=angle(shoulder,solved)-angle(shoulder,elbow);
-        const foreAngle=angle(solved,target)-angle(elbow,wrist);
-        next[side]={target,elbow:solved,upperAngle,foreAngle,handAngle:foreAngle};
+        const foreAngle=angle(solved,resolvedTarget)-angle(elbow,wrist);
+        next[side]={target:resolvedTarget,elbow:solved,upperAngle,foreAngle,handAngle:foreAngle};
       }
       return next;
     }
