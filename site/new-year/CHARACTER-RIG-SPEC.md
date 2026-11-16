@@ -1,6 +1,6 @@
 # SPEC-NY-03 — Heroine Segmentation & 2D Skeletal Rig
 
-**Status:** IMPLEMENTED — EDITOR FOUNDATION; PHOTO-SPECIFIC RIG PENDING  
+**Status:** IMPLEMENTED — SEGMENTATION EDITOR + JOINT AUTHORING + IK PREVIEW; PHOTO-SPECIFIC DEFORMATION PENDING  
 **Branch:** main  
 **Priority:** preserve identity and source pixels; no synthetic replacement of facial/body features.
 
@@ -36,13 +36,15 @@ Required layers: torso, neck, head, hair (optional if separable), left upper arm
 - Two-bone IK solves elbow from shoulder, target wrist, segment lengths and bend direction.
 - Clamp unreachable targets to the maximum/minimum reachable radius.
 - Joint positions and bone lengths are stored in source-image coordinates.
+- The editor supports manual placement of root/neck/head and bilateral shoulder/elbow/wrist joints.
+- IK preview computes solved elbow positions from measured upper-arm/forearm lengths; this preview does not yet deform extracted sprite layers.
 
 ## 6. Acceptance criteria
 - RIG-01 source photo loads locally and remains unchanged.
 - RIG-02 polygons can be drawn, closed, selected and cleared.
 - RIG-03 each defined segment exports as a transparent layer in browser memory.
 - RIG-04 joints can be placed and moved.
-- RIG-05 two-bone IK is numerically stable for reachable and unreachable targets.
+- RIG-05 two-bone IK preview is numerically stable for reachable and unreachable targets.
 - RIG-06 pose changes interpolate without discontinuities.
 - RIG-07 project metadata can be exported/imported as JSON.
 - RIG-08 reduced-motion preference disables autoplay.
@@ -50,4 +52,4 @@ Required layers: torso, neck, head, hair (optional if separable), left upper arm
 - RIG-10 photo-specific visual acceptance is withheld until the user's actual photo is loaded and each mask/joint alignment is inspected.
 
 ## 7. Known limitations
-Automatic semantic segmentation and generative inpainting are intentionally not claimed in this release. This foundation provides manual polygon segmentation and a real 2D transform/IK rig. The exact heroine cannot be segmented and rigged in this repository commit because her original photo is not present in the repository or current task attachments. Once loaded in the editor, mask tracing, hidden-pixel repair and joint placement are photo-specific authoring steps.
+Automatic semantic segmentation and generative inpainting are intentionally not claimed in this release. This foundation provides manual polygon segmentation and a real 2D transform/IK rig. The exact heroine cannot be photo-specifically segmented and rigged in this repository commit because her original photo is not present in the repository or current task attachments. Once loaded in the editor, mask tracing, hidden-pixel repair and joint placement are photo-specific authoring steps. IK preview currently visualizes bone geometry; sprite deformation/pose rendering remains a subsequent implementation step.
