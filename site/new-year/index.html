@@ -104,6 +104,26 @@
       </article>
     </section>
 
+    <section class="rig-workspace panel" aria-labelledby="rigTitle">
+      <div class="panel-heading"><span class="panel-number">05</span><div><h2 id="rigTitle">Сегментация и 2D-риг</h2><p>Создайте маски частей тела и настройте суставы исходной фотографии.</p></div></div>
+      <div class="rig-toolbar">
+        <label class="upload-control rig-upload" for="rigPhotoInput"><span class="upload-icon">＋</span><span><strong>Загрузить фото для риггинга</strong><small>Обработка только в браузере</small></span></label>
+        <input id="rigPhotoInput" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+        <label class="rig-field">Сегмент<select id="rigPart"><option value="head">Голова</option><option value="torso">Корпус</option><option value="leftUpperArm">Левое плечо / верхняя рука</option><option value="leftForearm">Левое предплечье</option><option value="leftHand">Левая кисть</option><option value="rightUpperArm">Правое плечо / верхняя рука</option><option value="rightForearm">Правое предплечье</option><option value="rightHand">Правая кисть</option></select></label>
+        <button class="button button-primary" id="rigClosePolygon" type="button" disabled>Замкнуть маску</button>
+        <button class="button button-quiet" id="rigUndo" type="button" disabled>Отменить точку</button>
+        <button class="button button-quiet" id="rigClear" type="button" disabled>Очистить сегмент</button>
+      </div>
+      <div class="rig-canvas-wrap"><canvas id="rigCanvas" width="960" height="640" aria-label="Редактор сегментации и суставов"></canvas><div id="rigEmpty" class="rig-empty">Загрузите исходную фотографию, чтобы начать сегментацию</div></div>
+      <div class="rig-actions">
+        <button class="button button-primary" id="rigBuildLayers" type="button" disabled>Создать RGBA-слои</button>
+        <button class="button button-quiet" id="rigExport" type="button" disabled>Экспорт проекта JSON</button>
+        <button class="button button-quiet" id="rigPose" type="button" disabled>Тест IK / позы</button>
+      </div>
+      <p class="rig-status" id="rigStatus" role="status">Фото не загружено. Сначала загрузите исходник.</p>
+      <p class="motion-hint">Порядок: обведите каждый сегмент многоугольником → замкните маску → расставьте суставы (режим будет доступен после создания слоёв) → проверьте IK. Скрытые под суставами участки требуют ручного восстановления; автоматическая дорисовка не выполняется.</p>
+    </section>
+
     <section class="notes">
       <div class="notes-icon">✧</div>
       <div><h2>Что уже работает</h2><p>Смена сцен, движение света, снегопад, праздничные эффекты, локальная загрузка фотографии и аудио, воспроизведение и визуальная реакция на громкость музыки.</p><p><strong>Важно:</strong> это интерактивная HTML-сцена, а не готовый видеоролик. Автоматическая синхронизация артикуляции губ и монтаж в MP4 потребуют отдельного lip-sync/видеопроизводственного этапа. Фото и аудио не отправляются на сервер.</p></div>
