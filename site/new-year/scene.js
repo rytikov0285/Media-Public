@@ -144,6 +144,7 @@
       const level = values.length ? total / values.length / 255 : 0;
       smoothedLevel += (level - smoothedLevel) * 0.16;
       stage.style.setProperty("--music-motion", String(Math.min(1, smoothedLevel * 2.2)));
+      stage.style.setProperty("--music-tempo", (3.4 - Math.min(1, smoothedLevel * 2.2) * 1.1).toFixed(2) + "s");
       bars.forEach((bar, index) => {
         const value = values[index * 2] || 0;
         bar.style.height = Math.max(12, Math.min(100, value * .85)) + "%";
