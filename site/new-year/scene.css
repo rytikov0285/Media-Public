@@ -96,3 +96,16 @@ button:focus-visible,a:focus-visible,input:focus-visible,.upload-control:focus-w
 
 .stage{--music-tempo:3s}
 .motion-arm{animation-duration:var(--music-tempo,3s)!important}
+
+/* SPEC-NY-03 — local segmentation and 2D rig editor */
+.rig-workspace{margin-top:22px;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:clamp(16px,3vw,28px)}
+.rig-toolbar,.rig-actions{display:flex;flex-wrap:wrap;align-items:end;gap:10px;margin:16px 0}
+.rig-upload{min-width:230px;flex:1}
+.rig-field{display:grid;gap:6px;color:var(--muted);font-size:11px}
+.rig-field select{background:#10223d;color:#fff;border:1px solid var(--line);border-radius:8px;padding:10px;min-width:170px}
+.rig-canvas-wrap{position:relative;background:#091526;border:1px solid var(--line);border-radius:12px;overflow:hidden;min-height:180px}
+#rigCanvas{display:block;width:100%;height:auto;max-height:70vh;object-fit:contain;touch-action:pan-y}
+.rig-empty{position:absolute;inset:0;display:grid;place-items:center;padding:25px;text-align:center;color:var(--muted);font-size:13px;pointer-events:none}
+.rig-status{color:#f1d79c;font-size:12px;line-height:1.5}
+.rig-actions .button:disabled,.rig-toolbar .button:disabled{opacity:.4;cursor:not-allowed}
+@media(max-width:600px){.rig-workspace{padding:14px}.rig-field,.rig-field select{width:100%}.rig-upload{min-width:100%}.rig-actions .button{flex:1}}
