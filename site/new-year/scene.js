@@ -23,6 +23,10 @@
   let sourceNode = null;
   let animationFrame = 0;
   let toastTimer = 0;
+  let motionIntensity = 0.65;
+  let motionEnabled = true;
+  let smoothedLevel = 0;
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
   function notify(message) {
     toast.textContent = message;
@@ -41,6 +45,7 @@
       button.classList.toggle("is-active", active);
       button.setAttribute("aria-pressed", String(active));
     });
+    stage.dataset.motion = motionEnabled && !reducedMotion.matches ? "on" : "off";
   }
 
   document.querySelectorAll(".scene-button").forEach((button) => {
@@ -134,6 +139,11 @@
         return;
       }
       analyser.getByteFrequencyData(values);
+      let total = 0;
+      for (let index = 0; index < values.length; index += 1) total += values[index];
+      const level = values.length ? total / values.length / 255 : 0;
+      smoothedLevel += (level - smoothedLevel) * 0.16;
+      stage.style.setProperty("--music-motion", String(Math.min(1, smoothedLevel * 2.2)));
       bars.forEach((bar, index) => {
         const value = values[index * 2] || 0;
         bar.style.height = Math.max(12, Math.min(100, value * .85)) + "%";
@@ -185,6 +195,31 @@
     $("volumeValue").textContent = Math.round(songAudio.volume * 100) + "%";
   });
   songAudio.volume = 0.8;
+
+  const motionEnabledInput = $("motionEnabled");
+  const motionIntensityInput = $("motionIntensity");
+  function applyMotionSettings() {
+    stage.dataset.motion = motionEnabled && !reducedMotion.matches ? "on" : "off";
+    stage.style.setProperty("--motion-intensity", String(motionIntensity));
+    $("motionIntensityValue").textContent = Math.round(motionIntensity * 100) + "%";
+    if (!motionEnabled || reducedMotion.matches) {
+      stage.style.setProperty("--music-motion", "0");
+    }
+  }
+  motionEnabledInput.addEventListener("change", () => {
+    motionEnabled = motionEnabledInput.checked;
+    applyMotionSettings();
+  });
+  motionIntensityInput.addEventListener("input", () => {
+    motionIntensity = Number(motionIntensityInput.value);
+    applyMotionSettings();
+  });
+  if (typeof reducedMotion.addEventListener === "function") {
+    reducedMotion.addEventListener("change", applyMotionSettings);
+  } else if (typeof reducedMotion.addListener === "function") {
+    reducedMotion.addListener(applyMotionSettings);
+  }
+  applyMotionSettings();
 
   window.addEventListener("beforeunload", () => {
     if (photoUrl) URL.revokeObjectURL(photoUrl);
