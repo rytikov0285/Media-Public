@@ -67,16 +67,16 @@ button:focus-visible,a:focus-visible,input:focus-visible,.upload-control:focus-w
 .arm-upper{left:31%;top:0;transform:rotate(-12deg)}
 .arm-fore{left:37%;top:42%;height:53%;transform:rotate(22deg)}
 .arm-hand{position:absolute;left:47%;top:82%;width:22%;height:17%;border-radius:55% 45% 50% 45%;background:linear-gradient(135deg,#f5c7b3,#d99e8b);transform:rotate(20deg)}
-.stage[data-scene="intro"] .motion-arm{opacity:.7}
+.stage[data-scene="intro"] .motion-arm{opacity:var(--motion-intensity,.65)}
 .stage[data-scene="intro"] .motion-arm-left{animation:arm-greet-left 3.8s ease-in-out infinite}
-.stage[data-scene="intro"] .motion-arm-right{opacity:.18}
-.stage[data-scene="verse"] .motion-arm{opacity:.55}
+.stage[data-scene="intro"] .motion-arm-right{opacity:calc(var(--motion-intensity,.65) * .25)}
+.stage[data-scene="verse"] .motion-arm{opacity:var(--motion-intensity,.65)}
 .stage[data-scene="verse"] .motion-arm-left{animation:arm-verse-left 3.4s ease-in-out infinite}
 .stage[data-scene="verse"] .motion-arm-right{animation:arm-verse-right 4s ease-in-out infinite}
-.stage[data-scene="chorus"] .motion-arm{opacity:.88}
+.stage[data-scene="chorus"] .motion-arm{opacity:var(--motion-intensity,.65)}
 .stage[data-scene="chorus"] .motion-arm-left{animation:arm-open-left 2.1s ease-in-out infinite}
 .stage[data-scene="chorus"] .motion-arm-right{animation:arm-open-right 2.1s ease-in-out infinite}
-.stage[data-scene="finale"] .motion-arm{opacity:.65}
+.stage[data-scene="finale"] .motion-arm{opacity:var(--motion-intensity,.65)}
 .stage[data-scene="finale"] .motion-arm-left{animation:arm-finale-left 3.5s ease-in-out infinite}
 .stage[data-scene="finale"] .motion-arm-right{animation:arm-finale-right 3.5s ease-in-out infinite}
 .stage[data-motion="off"] .motion-arm{display:none}
@@ -93,3 +93,6 @@ button:focus-visible,a:focus-visible,input:focus-visible,.upload-control:focus-w
 @keyframes arm-finale-right{0%,100%{transform:rotate(2deg) scale(.8)}50%{transform:rotate(30deg) scale(.86)}}
 @media(max-width:600px){.motion-panel{grid-column:auto}.motion-arm{width:30%;height:43%;bottom:22%}}
 @media(prefers-reduced-motion:reduce){.heroine-image,.motion-arm{animation:none!important}.heroine-wrap{animation:none!important}}
+
+.stage{--music-tempo:3s}
+.motion-arm{animation-duration:var(--music-tempo,3s)!important}
