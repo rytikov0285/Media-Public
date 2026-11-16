@@ -231,7 +231,7 @@
 
   function initRigEditor() {
     const canvas = $("rigCanvas"), ctx = canvas.getContext("2d");
-    const fileInput = $("rigPhotoInput"), partSelect = $("rigPart");
+    const fileInput = $("rigPhotoInput"), partSelect = $("rigPart"), modeSelect=$("rigMode"), jointSelect=$("rigJoint");
     const closeBtn = $("rigClosePolygon"), undoBtn = $("rigUndo"), clearBtn = $("rigClear");
     const buildBtn = $("rigBuildLayers"), exportBtn = $("rigExport"), poseBtn = $("rigPose");
     const status = $("rigStatus"), empty = $("rigEmpty");
@@ -254,7 +254,8 @@
         ctx.fillStyle=palette[name]+"35";ctx.strokeStyle=palette[name];ctx.lineWidth=2;ctx.fill();ctx.stroke();
       });
       if(rig.points.length){ctx.beginPath();rig.points.forEach((p,i)=>{const q=toCanvas(p);i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y)});const last=toCanvas(rig.points[rig.points.length-1]);ctx.lineTo(last.x,last.y);ctx.strokeStyle=palette[rig.activePart];ctx.lineWidth=2;ctx.stroke();rig.points.forEach(p=>{const q=toCanvas(p);ctx.beginPath();ctx.arc(q.x,q.y,5,0,Math.PI*2);ctx.fillStyle="#fff";ctx.fill();ctx.strokeStyle=palette[rig.activePart];ctx.stroke()})}
-      Object.entries(rig.joints).forEach(([name,p])=>{const q=toCanvas(p);ctx.beginPath();ctx.arc(q.x,q.y,7,0,Math.PI*2);ctx.fillStyle="#ffe08a";ctx.fill();ctx.strokeStyle="#17263c";ctx.lineWidth=2;ctx.stroke();ctx.fillStyle="#fff";ctx.font="12px sans-serif";ctx.fillText(name,q.x+9,q.y-8)});
+      ["left","right"].forEach(side=>{const a=rig.joints[side+"Shoulder"],b=rig.joints[side+"ElbowSolved"]||rig.joints[side+"Elbow"],c=rig.joints[side+"Wrist"];if(a&&b&&c){const p=toCanvas(a),q=toCanvas(b),r=toCanvas(c);ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.lineTo(r.x,r.y);ctx.strokeStyle=side==="left"?"#ff9b91":"#8ee0ad";ctx.lineWidth=4;ctx.stroke()}});
+      Object.entries(rig.joints).forEach(([name,p])=>{const q=toCanvas(p);ctx.beginPath();ctx.arc(q.x,q.y,7,0,Math.PI*2);ctx.fillStyle=name.endsWith("Solved")?"#79e0ff":"#ffe08a";ctx.fill();ctx.strokeStyle="#17263c";ctx.lineWidth=2;ctx.stroke();ctx.fillStyle="#fff";ctx.font="12px sans-serif";ctx.fillText(name,q.x+9,q.y-8)});
     }
     fileInput.addEventListener("change",()=>{
       const file=fileInput.files&&fileInput.files[0];if(!file)return;
@@ -267,7 +268,12 @@
     partSelect.addEventListener("change",()=>{rig.activePart=partSelect.value;rig.points=[];draw();say("Активный сегмент: "+partSelect.options[partSelect.selectedIndex].text);});
     canvas.addEventListener("click",e=>{
       if(!rig.image)return;const rect=canvas.getBoundingClientRect();const x=(e.clientX-rect.left)*canvas.width/rect.width,y=(e.clientY-rect.top)*canvas.height/rect.height;
-      rig.points.push(toSource(x,y));undoBtn.disabled=false;closeBtn.disabled=rig.points.length<3;draw();
+      const point=toSource(x,y);
+      if(modeSelect.value==="joint"){
+        rig.joints[jointSelect.value]=point;
+        draw();say("Сустав "+jointSelect.options[jointSelect.selectedIndex].text+" установлен.");return;
+      }
+      rig.points.push(point);undoBtn.disabled=false;closeBtn.disabled=rig.points.length<3;draw();
     });
     undoBtn.addEventListener("click",()=>{rig.points.pop();undoBtn.disabled=!rig.points.length;closeBtn.disabled=rig.points.length<3;draw();});
     clearBtn.addEventListener("click",()=>{delete rig.masks[rig.activePart];rig.points=[];draw();say("Маска сегмента очищена.");});
@@ -282,13 +288,17 @@
       const count=Object.keys(rig.layers).length;poseBtn.disabled=count<3;say("Создано "+count+" RGBA-слоёв в памяти браузера. Это маски, не восстановление скрытых пикселей.");
     });
     poseBtn.addEventListener("click",()=>{
-      const required=["leftUpperArm","leftForearm","rightUpperArm","rightForearm"];
-      const missing=required.filter(x=>!rig.layers[x]);
-      if(missing.length){say("Для теста двух рук добавьте сегменты: "+missing.join(", "));return;}
-      // Analytic two-bone IK utility; endpoints are placed from manually authored joints.
+      const names=["leftShoulder","leftElbow","leftWrist","rightShoulder","rightElbow","rightWrist"];
+      const missing=names.filter(x=>!rig.joints[x]);
+      if(missing.length){say("Сначала расставьте суставы в режиме «Расстановка суставов»: "+missing.join(", "));return;}
       const solve=(a,target,l1,l2,sign)=>{const dx=target.x-a.x,dy=target.y-a.y,d=Math.hypot(dx,dy)||.001;const dist=Math.max(Math.abs(l1-l2)+.001,Math.min(l1+l2-.001,d));const along=(l1*l1-l2*l2+dist*dist)/(2*dist);const h=Math.sqrt(Math.max(0,l1*l1-along*along));return{x:a.x+dx/d*along-sign*dy/d*h,y:a.y+dy/d*along+sign*dx/d*h};};
-      const a={x:0,y:0},target={x:120,y:40};const elbow=solve(a,target,90,70,1);
-      say("IK-ядро проверено на тестовой конфигурации. Следующий шаг — расставить плечи, локти и запястья на фотографии и связать сегменты с реальными pivot-точками. Пример локтя: "+Math.round(elbow.x)+", "+Math.round(elbow.y)+".");
+      ["left","right"].forEach(side=>{
+        const shoulder=rig.joints[side+"Shoulder"], elbow=rig.joints[side+"Elbow"], wrist=rig.joints[side+"Wrist"];
+        const l1=Math.hypot(elbow.x-shoulder.x,elbow.y-shoulder.y),l2=Math.hypot(wrist.x-elbow.x,wrist.y-elbow.y);
+        const solved=solve(shoulder,wrist,l1,l2,side==="left"?1:-1);
+        rig.joints[side+"ElbowSolved"]=solved;
+      });
+      draw();say("Двухзвенный IK рассчитан для обеих рук по заданным длинам сегментов. Жёлтые точки — исходные суставы; рассчитанные локти сохранены в состоянии проекта.");
     });
     exportBtn.addEventListener("click",()=>{
       const data={schema:"media-public.heroine-rig.v1",image:{width:rig.image?.naturalWidth||0,height:rig.image?.naturalHeight||0},masks:rig.masks,joints:rig.joints,parts:Object.keys(rig.layers),note:"Original image pixels are not embedded. Re-upload the same source image when importing this metadata."};
