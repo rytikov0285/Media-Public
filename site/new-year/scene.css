@@ -109,3 +109,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,.upload-control:focus-w
 .rig-status{color:#f1d79c;font-size:12px;line-height:1.5}
 .rig-actions .button:disabled,.rig-toolbar .button:disabled{opacity:.4;cursor:not-allowed}
 @media(max-width:600px){.rig-workspace{padding:14px}.rig-field,.rig-field select{width:100%}.rig-upload{min-width:100%}.rig-actions .button{flex:1}}
+
+/* Sprite Deformation Engine — local RGBA preview */
+.rig-preview-wrap{margin:18px 0;padding:16px;background:#0d1d33;border:1px solid var(--line);border-radius:12px}
+.rig-preview-wrap h3{margin:0 0 12px;font-size:14px;color:var(--gold)}
+#rigPreview{display:block;width:100%;height:auto;max-height:70vh;object-fit:contain;background:#091526;border:1px solid var(--line);border-radius:8px}
