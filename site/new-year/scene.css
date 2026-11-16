@@ -55,3 +55,41 @@ button:focus-visible,a:focus-visible,input:focus-visible,.upload-control:focus-w
 @media(max-width:900px){.control-grid{grid-template-columns:1fr 1fr}.panel-scenes{grid-column:1/-1}.scene-list{grid-template-columns:1fr 1fr}}
 @media(max-width:600px){.topbar{height:62px}.topbar-tag{font-size:8px;max-width:120px;text-align:right}.studio{width:calc(100% - 24px)}.intro{padding:32px 0 20px}.stage{min-height:260px;aspect-ratio:4/5}.heroine-wrap{width:58%;height:70%;bottom:15%}.tree{width:22%;height:45%}.tree-left{left:0}.tree-right{right:0}.stage-caption{left:4%;bottom:4%;max-width:45%}.stage-caption strong{font-size:18px}.stage-caption span:last-child{font-size:9px}.audio-pulse{right:4%;bottom:5%}.stage-footer{font-size:8px;letter-spacing:.06em;padding:0 9px}.control-grid{grid-template-columns:1fr}.panel-scenes{grid-column:auto}.scene-list{grid-template-columns:1fr 1fr}.notes{padding:17px;gap:10px}.footer{gap:12px;font-size:9px}.heroine-placeholder{width:90%}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+/* Character Motion System — SPEC-NY-02 */
+.heroine-wrap{--motion-intensity:.65;will-change:transform}
+.heroine-image{transform-origin:50% 32%;will-change:transform;animation:portrait-breathe 4.8s ease-in-out infinite}
+.stage[data-motion="off"] .heroine-wrap,.stage[data-motion="off"] .heroine-image{animation:none!important;transform:none!important}
+.motion-arm{position:absolute;z-index:3;bottom:23%;width:27%;height:49%;opacity:0;pointer-events:none;transform-origin:50% 12%;filter:drop-shadow(0 7px 7px rgba(0,0,0,.2))}
+.motion-arm-left{left:2%;transform:rotate(32deg) scale(.82)}
+.motion-arm-right{right:2%;transform:rotate(-32deg) scale(.82)}
+.arm-upper,.arm-fore{position:absolute;display:block;width:39%;height:55%;border-radius:45% 45% 30% 30%;background:linear-gradient(90deg,#d9dce2,#fff 48%,#c9d0d9);border:1px solid rgba(255,255,255,.7);transform-origin:50% 8%}
+.arm-upper{left:31%;top:0;transform:rotate(-12deg)}
+.arm-fore{left:37%;top:42%;height:53%;transform:rotate(22deg)}
+.arm-hand{position:absolute;left:47%;top:82%;width:22%;height:17%;border-radius:55% 45% 50% 45%;background:linear-gradient(135deg,#f5c7b3,#d99e8b);transform:rotate(20deg)}
+.stage[data-scene="intro"] .motion-arm{opacity:.7}
+.stage[data-scene="intro"] .motion-arm-left{animation:arm-greet-left 3.8s ease-in-out infinite}
+.stage[data-scene="intro"] .motion-arm-right{opacity:.18}
+.stage[data-scene="verse"] .motion-arm{opacity:.55}
+.stage[data-scene="verse"] .motion-arm-left{animation:arm-verse-left 3.4s ease-in-out infinite}
+.stage[data-scene="verse"] .motion-arm-right{animation:arm-verse-right 4s ease-in-out infinite}
+.stage[data-scene="chorus"] .motion-arm{opacity:.88}
+.stage[data-scene="chorus"] .motion-arm-left{animation:arm-open-left 2.1s ease-in-out infinite}
+.stage[data-scene="chorus"] .motion-arm-right{animation:arm-open-right 2.1s ease-in-out infinite}
+.stage[data-scene="finale"] .motion-arm{opacity:.65}
+.stage[data-scene="finale"] .motion-arm-left{animation:arm-finale-left 3.5s ease-in-out infinite}
+.stage[data-scene="finale"] .motion-arm-right{animation:arm-finale-right 3.5s ease-in-out infinite}
+.stage[data-motion="off"] .motion-arm{display:none}
+.motion-toggle{display:flex;align-items:center;gap:9px;color:#eaf1fb;font-size:12px;cursor:pointer}
+.motion-toggle input{accent-color:#e8c77f;width:16px;height:16px}
+.motion-hint{font-size:10px;line-height:1.5;color:var(--muted);margin:14px 0 0}
+@keyframes portrait-breathe{0%,100%{transform:translateY(0) rotate(0)}35%{transform:translateY(-2px) rotate(-.35deg)}70%{transform:translateY(1px) rotate(.25deg)}}
+@keyframes arm-greet-left{0%,100%{transform:rotate(25deg) scale(.8)}50%{transform:rotate(-28deg) scale(.9)}}
+@keyframes arm-verse-left{0%,100%{transform:rotate(28deg) scale(.82)}50%{transform:rotate(-8deg) scale(.86)}}
+@keyframes arm-verse-right{0%,100%{transform:rotate(-26deg) scale(.8)}50%{transform:rotate(-42deg) scale(.85)}}
+@keyframes arm-open-left{0%,100%{transform:rotate(24deg) scale(.86)}50%{transform:rotate(-38deg) scale(.98)}}
+@keyframes arm-open-right{0%,100%{transform:rotate(-24deg) scale(.86)}50%{transform:rotate(38deg) scale(.98)}}
+@keyframes arm-finale-left{0%,100%{transform:rotate(-2deg) scale(.8)}50%{transform:rotate(-30deg) scale(.86)}}
+@keyframes arm-finale-right{0%,100%{transform:rotate(2deg) scale(.8)}50%{transform:rotate(30deg) scale(.86)}}
+@media(max-width:600px){.motion-panel{grid-column:auto}.motion-arm{width:30%;height:43%;bottom:22%}}
+@media(prefers-reduced-motion:reduce){.heroine-image,.motion-arm{animation:none!important}.heroine-wrap{animation:none!important}}
