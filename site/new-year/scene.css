@@ -57,7 +57,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,.upload-control:focus-w
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 
 /* Character Motion System — SPEC-NY-02 */
-.heroine-wrap{--motion-intensity:.65;will-change:transform}
+.heroine-wrap{will-change:transform}
 .heroine-image{transform-origin:50% 32%;will-change:transform;animation:portrait-breathe 4.8s ease-in-out infinite}
 .stage[data-motion="off"] .heroine-wrap,.stage[data-motion="off"] .heroine-image{animation:none!important;transform:none!important}
 .motion-arm{position:absolute;z-index:3;bottom:23%;width:27%;height:49%;opacity:0;pointer-events:none;transform-origin:50% 12%;filter:drop-shadow(0 7px 7px rgba(0,0,0,.2))}
@@ -69,7 +69,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,.upload-control:focus-w
 .arm-hand{position:absolute;left:47%;top:82%;width:22%;height:17%;border-radius:55% 45% 50% 45%;background:linear-gradient(135deg,#f5c7b3,#d99e8b);transform:rotate(20deg)}
 .stage[data-scene="intro"] .motion-arm{opacity:var(--motion-intensity,.65)}
 .stage[data-scene="intro"] .motion-arm-left{animation:arm-greet-left 3.8s ease-in-out infinite}
-.stage[data-scene="intro"] .motion-arm-right{opacity:calc(var(--motion-intensity,.65) * .25)}
+.stage[data-scene="intro"] .motion-arm-right{opacity:var(--motion-intensity,.65)}
 .stage[data-scene="verse"] .motion-arm{opacity:var(--motion-intensity,.65)}
 .stage[data-scene="verse"] .motion-arm-left{animation:arm-verse-left 3.4s ease-in-out infinite}
 .stage[data-scene="verse"] .motion-arm-right{animation:arm-verse-right 4s ease-in-out infinite}
