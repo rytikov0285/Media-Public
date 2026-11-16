@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#10223d">
+  <meta name="description" content="Интерактивная новогодняя сцена исполнения песни главной героиней.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; upgrade-insecure-requests">
+  <title>Новогодняя сцена — С Новым годом!</title>
+  <link rel="stylesheet" href="./scene.css">
+  <script src="./scene.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#studio">Перейти к сцене</a>
+  <header class="topbar">
+    <a class="brand" href="../" aria-label="MediaPlatforma"><span class="brand-mark">M<span>.</span></span><span>MediaPlatforma<small>Творческая студия</small></span></a>
+    <span class="topbar-tag">НОВОГОДНИЙ МУЗЫКАЛЬНЫЙ КЛИП</span>
+  </header>
+
+  <main id="studio" class="studio">
+    <section class="intro">
+      <p class="eyebrow">ИНТЕРАКТИВНАЯ СЦЕНА · 16:9</p>
+      <h1>С Новым годом!</h1>
+      <p>Главная героиня выходит на праздничную сцену. Добавьте фотографию персонажа и аудиозапись песни — всё воспроизводится локально в вашем браузере.</p>
+    </section>
+
+    <section class="stage-shell" aria-label="Новогодняя сцена">
+      <div class="stage" id="stage" data-scene="intro">
+        <div class="sky-glow"></div>
+        <div class="moon"></div>
+        <div class="distant-village" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="tree tree-left" aria-hidden="true"><b></b><b></b><b></b><span>✦</span></div>
+        <div class="tree tree-right" aria-hidden="true"><b></b><b></b><b></b><span>✦</span></div>
+        <div class="garland garland-one" aria-hidden="true"></div>
+        <div class="garland garland-two" aria-hidden="true"></div>
+        <div class="snow-layer" id="snowLayer" aria-hidden="true"></div>
+        <div class="stage-platform"></div>
+        <div class="heroine-wrap" id="heroineWrap">
+          <div class="heroine-aura"></div>
+          <div class="heroine-placeholder" id="heroinePlaceholder" aria-label="Место для фотографии героини">
+            <span class="placeholder-star">✧</span>
+            <span class="placeholder-person">♡</span>
+            <strong>Ваша героиня</strong>
+            <small>Загрузите фотографию ниже</small>
+          </div>
+          <img id="heroineImage" class="heroine-image" alt="Главная героиня новогоднего клипа" hidden>
+          <div class="spotlight"></div>
+        </div>
+        <div class="stage-caption" aria-live="polite">
+          <span class="caption-kicker">НОВОГОДНЕЕ ВЫСТУПЛЕНИЕ</span>
+          <strong id="sceneTitle">Волшебная ночь начинается</strong>
+          <span id="sceneSubtitle">Свет загорается, и героиня выходит на сцену</span>
+        </div>
+        <div class="audio-pulse" id="audioPulse" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="stage-vignette"></div>
+      </div>
+      <div class="stage-footer">
+        <span><i class="live-dot"></i> СЦЕНА ГОТОВА</span>
+        <span id="playState">Ожидание аудио</span>
+        <span>16:9 · HD</span>
+      </div>
+    </section>
+
+    <section class="control-grid" aria-label="Управление сценой">
+      <article class="panel">
+        <div class="panel-heading"><span class="panel-number">01</span><div><h2>Персонаж</h2><p>Используйте исходную фотографию как референс.</p></div></div>
+        <label class="upload-control" for="photoInput"><span class="upload-icon">＋</span><span><strong>Загрузить фотографию</strong><small>JPG, PNG или WebP · остаётся на устройстве</small></span></label>
+        <input id="photoInput" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+        <p class="file-status" id="photoStatus">Фотография не выбрана</p>
+      </article>
+
+      <article class="panel">
+        <div class="panel-heading"><span class="panel-number">02</span><div><h2>Музыка</h2><p>Добавьте аудиофайл песни.</p></div></div>
+        <label class="upload-control" for="audioInput"><span class="upload-icon">♫</span><span><strong>Загрузить аудиозапись</strong><small>MP3, WAV, OGG или M4A · локально</small></span></label>
+        <input id="audioInput" type="file" accept="audio/*" hidden>
+        <p class="file-status" id="audioStatus">Аудиозапись не выбрана</p>
+        <audio id="songAudio" preload="metadata"></audio>
+        <div class="audio-controls">
+          <button class="button button-primary" id="playButton" type="button" disabled>▶ Воспроизвести</button>
+          <button class="button button-quiet" id="stopButton" type="button" disabled>■ Стоп</button>
+        </div>
+        <label class="volume-label" for="volumeInput">Громкость <output id="volumeValue">80%</output></label>
+        <input id="volumeInput" class="range" type="range" min="0" max="1" step="0.01" value="0.8">
+      </article>
+
+      <article class="panel panel-scenes">
+        <div class="panel-heading"><span class="panel-number">03</span><div><h2>Сценарий выступления</h2><p>Переключайте визуальные эпизоды.</p></div></div>
+        <div class="scene-list" role="group" aria-label="Выбор сцены">
+          <button class="scene-button is-active" data-scene="intro" type="button"><span>01</span><b>Выход на сцену</b><small>Волшебное вступление</small></button>
+          <button class="scene-button" data-scene="verse" type="button"><span>02</span><b>Первый куплет</b><small>Тёплый свет и снег</small></button>
+          <button class="scene-button" data-scene="chorus" type="button"><span>03</span><b>Праздничный припев</b><small>Гирлянды и сияние</small></button>
+          <button class="scene-button" data-scene="finale" type="button"><span>04</span><b>Финал</b><small>Звёзды и фейерверк</small></button>
+        </div>
+      </article>
+    </section>
+
+    <section class="notes">
+      <div class="notes-icon">✧</div>
+      <div><h2>Что уже работает</h2><p>Смена сцен, движение света, снегопад, праздничные эффекты, локальная загрузка фотографии и аудио, воспроизведение и визуальная реакция на громкость музыки.</p><p><strong>Важно:</strong> это интерактивная HTML-сцена, а не готовый видеоролик. Автоматическая синхронизация артикуляции губ и монтаж в MP4 потребуют отдельного lip-sync/видеопроизводственного этапа. Фото и аудио не отправляются на сервер.</p></div>
+    </section>
+  </main>
+
+  <footer class="footer"><span>MediaPlatforma · Новогодняя творческая студия</span><a href="../">На главную ↗</a></footer>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
