@@ -117,8 +117,15 @@
       <div class="rig-canvas-wrap"><canvas id="rigCanvas" width="960" height="640" aria-label="Редактор сегментации и суставов"></canvas><div id="rigEmpty" class="rig-empty">Загрузите исходную фотографию, чтобы начать сегментацию</div></div>
       <div class="rig-actions">
         <button class="button button-primary" id="rigBuildLayers" type="button" disabled>Создать RGBA-слои</button>
+        <button class="button button-quiet" id="rigApplyDeform" type="button" disabled>Применить деформацию спрайтов</button>
+        <button class="button button-quiet" id="rigResetDeform" type="button" disabled>Сбросить деформацию</button>
         <button class="button button-quiet" id="rigExport" type="button" disabled>Экспорт проекта JSON</button>
         <button class="button button-quiet" id="rigPose" type="button" disabled>Тест IK / позы</button>
+      </div>
+      <div class="rig-preview-wrap">
+        <h3>Предпросмотр деформации RGBA-слоёв</h3>
+        <canvas id="rigPreview" width="960" height="640" aria-label="Предпросмотр деформированных сегментов героини"></canvas>
+        <p class="motion-hint">Предпросмотр использует исходные пиксели масок и вращение сегментов вокруг суставов. Пустые участки под повёрнутыми частями тела автоматически не дорисовываются.</p>
       </div>
       <p class="rig-status" id="rigStatus" role="status">Фото не загружено. Сначала загрузите исходник.</p>
       <p class="motion-hint">Порядок: обведите каждый сегмент многоугольником → замкните маску → расставьте суставы (режим будет доступен после создания слоёв) → проверьте IK. Скрытые под суставами участки требуют ручного восстановления; автоматическая дорисовка не выполняется.</p>
