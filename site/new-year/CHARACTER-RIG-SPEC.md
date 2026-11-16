@@ -72,7 +72,7 @@ The hierarchy is applied by nested Canvas transforms, so child segments inherit 
 
 ## 7. Verification status and known limitations
 
-Static JavaScript syntax and DOM-reference checks are required before merge. Mathematical unit checks can validate the two-bone geometry independently. These checks do not prove Canvas rendering or browser interaction.
+**Checks performed for this implementation:** JavaScript parse via `new Function` — PASS; duplicate HTML IDs — none; JavaScript-to-DOM ID references — all resolve; two-bone geometry cases (reachable, too-far, too-near and equal-length) — PASS, with both segment lengths preserved within 0.001 source pixels after endpoint clamping. These checks do not prove Canvas rendering or browser interaction.
 
 The GitHub source photo may exist in the repository, but unless its binary content is actually retrieved and visually inspected, no claim is made about its dimensions, anatomy, mask fit or visual result.
 
